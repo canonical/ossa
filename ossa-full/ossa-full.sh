@@ -336,7 +336,7 @@ if [[ -f /tmp/ubuntu-security-status ]];then
 			grep -m1 -lE "$(printf '^Origin:.*%s$\n' ${OSSA_ORIGINS[@]}|paste -sd'|')" {} \;| \
 			sed 's|/var/lib/apt/lists/|http://|g;s|_dists_||g;s|_ubuntu.*$|/ubuntu/ |g'| \
 			sort -uV| \
-			tee -a ${REL_DIR}/mirror.cfg
+			tee 1> /dev/null -a ${REL_DIR}/mirror.cfg
 		[[ -n ${EXTRA_ORIGINS[@]} && ${#EXTRA_ORIGINS[@]} -ge 1 ]] && { printf '%s\n' ${EXTRA_ORIGINS[@]}|tee -a ${REL_DIR}/mirror.cfg; }
     sed "s|/usr/share/ubuntu-release-upgrader/mirrors.cfg|${REL_DIR}/mirror.cfg|g" -i /tmp/ubuntu-security-status
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running ubuntu-security-status\n"
@@ -416,6 +416,7 @@ if [[ $(command -v lsof) ]];then
 else
 	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: lsof not installed. Skipping\n"
 fi
+
 ##################
 # Create Tarball #
 ##################
@@ -455,7 +456,7 @@ OSSA_TIME=$(TZ=UTC date --date now-${NOW} "+%H:%M:%S")
 echo
 read -t 20 -p "Hit ENTER or wait 20 seconds to clear OSSA data from the screen"
 tput sgr0; tput cnorm; tput rmcup
-echo
+
 # Show elapsed time
 printf "\e[2G\e[1mOpen Source Security Assessment completed in ${OSSA_TIME}\e[0m\n\n"
 # Show tarball location

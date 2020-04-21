@@ -30,6 +30,7 @@ is located. Once in ossa/ossa-lite-madison you can:
 	```
 	./ossa-lite-madison.sh myuser@my-ubuntu-instance.example.org
 	```
+	
 * Run Script against Remote Machine using an IP address
 
 	```

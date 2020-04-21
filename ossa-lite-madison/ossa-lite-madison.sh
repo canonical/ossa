@@ -21,4 +21,4 @@ dpkg -l|awk "/^ii/{print \$2\"\\t\"\$3}"|xargs -rn2 -P0 bash -c '"'"'apt-cache m
 FILES="${DPKG_STATUS_TMP##*/} ${LSB_RELEASE_TMP##*/} netstat-an.$$ dpkg-l.$$ snap-list.$$ apt-policy.$$ ps-auxwww.$$ apt-lists.$$.tar apt-sources.$$.tar apt-madison.$$"
 tar -C /tmp -cf - ${FILES}'|gzip -c|tee 1>/dev/null /tmp/ossa-lite-madison.${SSH_HOST##*@}.tgz
 echo -e "\nOpen Source Security Assessment Lite (Madison) has completed.\n"
-echo -e "Please send /tmp/ossa-lite-madison.${SSH_HOST##*@}.tgz to your Canonical representative.\n"
+echo -e "Data collected by ${0##*/} is located at /tmp/ossa-lite-madison.${SSH_HOST##*@}.tgz.\n"
