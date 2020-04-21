@@ -11,7 +11,7 @@ git clone https://github.com/ThinGuy/ossa.git
 
 ## Available Scripts
 
-* [ossa-full](https://github.com/ThinGuy/ossa/tree/master/ossa-full) - Gathers information about packages and processes, scan for CVEs,etc
+* [ossa-full](https://github.com/ThinGuy/ossa/tree/master/ossa-full) - Gathers information about packages and processes, scan for CVEs, etc.
 * [ossa-lite](https://github.com/ThinGuy/ossa/tree/master/ossa-lite) - Script intended to be ran on a remote system via ssh.  This version runs the fastest, but lacks package origin information.
 * [ossa-lite-madison](https://github.com/ThinGuy/ossa/tree/master/ossa-lite-madison) - Script intended to be ran on a remote system via ssh.  This version grabs [apt-cache madison](https://manpages.ubuntu.com/manpages/bionic/man8/apt-cache.8.html) information so package origin can be derived
 
