@@ -69,7 +69,7 @@ ossa-full_Usage() {
     printf "\n\e[4GPurge existing/leftover directory, perform CVE Scan, encrypt compressed archive of collected data, and\n\e[6Gkeep data directory after run\n\n"
     printf '\e[6G./'${FUNCNAME%%_*}'.sh -pSke '"'"'MyP@ssW0rd!'"'"' \n\n'
 };export -f ossa-full_Usage
-                           Note: 
+
 ################
 # ARGS/OPTIONS #
 ################
