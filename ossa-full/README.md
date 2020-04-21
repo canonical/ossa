@@ -13,51 +13,51 @@ ossa-full.sh should complete is less than 5 minutes, but will usually finish muc
 
 * Help options will be displayed
 
-	``` 
-	 Script: ossa.sh
+``` 
+ Script: ossa.sh
 
-	 Usage: ossa.sh [ Options ] 
+ Usage: ossa.sh [ Options ] 
 
-	 Options:
+ Options:
 
-		 -d, --dir               Directory to store Open Source Security Assessment Data (Default: /tmp/ossa_files)
+	 -d, --dir               Directory to store Open Source Security Assessment Data (Default: /tmp/ossa_files)
 
-		 -s, --suffix            Append given suffix to collected files (Default: ".orangebox20.orangebox.me.focal"
+	 -s, --suffix            Append given suffix to collected files (Default: ".orangebox20.orangebox.me.focal"
 
-		 -o, --override          Copy apt list file regardless if they contain embedded credentials (Default: false)
+	 -o, --override          Copy apt list file regardless if they contain embedded credentials (Default: false)
 
-		 -p, --purge             Purge existing OSSA Directory (Default: False)
+	 -p, --purge             Purge existing OSSA Directory (Default: False)
 
-		 -k, --keep              Keep OSSA Directory after script completes (Default: False)
+	 -k, --keep              Keep OSSA Directory after script completes (Default: False)
 
-		 -e, --encrypt           Encrypt OSSA Datafiles with given passphrase (Default: False)
+	 -e, --encrypt           Encrypt OSSA Datafiles with given passphrase (Default: False)
 
-		 -m, --no-madison        Do not run apt-cache madison against package manifest (Default: False)
+	 -m, --no-madison        Do not run apt-cache madison against package manifest (Default: False)
 
-		 -O, --origins           If you are running a mirror of an official ubuntu repository,
-														 add the URL(s) to they can be marked as official
+	 -O, --origins           If you are running a mirror of an official ubuntu repository,
+													 add the URL(s) to they can be marked as official
 
-														 Note: Format should be a single URL or a space/comma
-																	 separated list, surrounded by quotes
+													 Note: Format should be a single URL or a space/comma
+																 separated list, surrounded by quotes
 
-		 -S, --scan              Install OpenSCAP & scan manifest for CVEs. Sudo access is required only
-														 if OpenSCAP is not installed. (Default: False)
+	 -S, --scan              Install OpenSCAP & scan manifest for CVEs. Sudo access is required only
+													 if OpenSCAP is not installed. (Default: False)
 
-		 -h, --help              This message
+	 -h, --help              This message
 
-	 Examples:
+ Examples:
 
-		 Change location of collected data:
-			 ./ossa-full.sh -d $HOME/ossa_files
+	 Change location of collected data:
+		 ./ossa-full.sh -d $HOME/ossa_files
 
-		 Set custom file suffix:
-			 ./ossa-full.sh -s $(hostname -f).$(lsb_release 2>/dev/null -sr)
+	 Set custom file suffix:
+		 ./ossa-full.sh -s $(hostname -f).$(lsb_release 2>/dev/null -sr)
 
-		 Purge existing/leftover directory, perform CVE Scan, encrypt compressed archive of collected data, and
-			 keep data directory after run
+	 Purge existing/leftover directory, perform CVE Scan, encrypt compressed archive of collected data, and
+		 keep data directory after run
 
-			 ./ossa-full.sh -pSke 'MyP@ssW0rd!' 
-	```
+		 ./ossa-full.sh -pSke 'MyP@ssW0rd!' 
+```
 
 
 ### Transfer Script to Remote Machine
