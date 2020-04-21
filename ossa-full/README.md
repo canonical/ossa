@@ -2,48 +2,50 @@
 This script should be ran from the system that is being assessed
 
 ## Script Options
-
+* Get script options by running the following:
 ```
-~$ ./ossa.sh -h
+./ossa-full.sh -h
+	```
+	* Help options will be displayed
+	``` 
+	 Script: ossa.sh
 
- Script: ossa.sh
- 
- Usage: ossa.sh [ Options ] 
- 
- Options:
+	 Usage: ossa.sh [ Options ] 
 
-   -d, --dir               Directory to store Open Source Security Assessment Data (Default: /tmp/ossa_files)
+	 Options:
 
-   -s, --suffix            Append given suffix to collected files (Default: ".orangebox20.orangebox.me.focal"
+		 -d, --dir               Directory to store Open Source Security Assessment Data (Default: /tmp/ossa_files)
 
-   -o, --override          Copy apt list file regardless if they contain embedded credentials (Default: false)
+		 -s, --suffix            Append given suffix to collected files (Default: ".orangebox20.orangebox.me.focal"
 
-   -p, --purge             Purge existing OSSA Directory (Default: False)
+		 -o, --override          Copy apt list file regardless if they contain embedded credentials (Default: false)
 
-   -k, --keep              Keep OSSA Directory after script completes (Default: False)
+		 -p, --purge             Purge existing OSSA Directory (Default: False)
 
-   -e, --encrypt           Encrypt OSSA Datafiles with given passphrase (Default: False)
+		 -k, --keep              Keep OSSA Directory after script completes (Default: False)
 
-   -m,--no-madison         Do not run apt-cache madison against package manifest (Default: False)
+		 -e, --encrypt           Encrypt OSSA Datafiles with given passphrase (Default: False)
 
-   -S, --scan              Install OpenSCAP & scan manifest for CVEs. Require sudo access
-                           if OpenSCAP is not installed. (Default: False)
+		 -m, --no-madison        Do not run apt-cache madison against package manifest (Default: False)
 
-   -h, --help              This message
+		 -S, --scan              Install OpenSCAP & scan manifest for CVEs. Sudo access is required only
+														 if OpenSCAP is not installed. (Default: False)
 
- Examples:
+		 -h, --help              This message
 
-   Change location of collected data:
-     ossa.sh -d $HOME/ossa_files
+	 Examples:
 
-   Set custom file suffix:
-     ossa.sh -s $(hostname -f).$(lsb_release 2>/dev/null -sr)
+		 Change location of collected data:
+			 ./ossa-full.sh -d $HOME/ossa_files
 
-   Purge existing/leftover directory, perform CVE Scan, encrypt compressed archive of collected data, and
-     keep data directory after run
+		 Set custom file suffix:
+			 ./ossa-full.sh -s $(hostname -f).$(lsb_release 2>/dev/null -sr)
 
-     ossa.sh -pSke 'MyP@ssW0rd!' 
-```
+		 Purge existing/leftover directory, perform CVE Scan, encrypt compressed archive of collected data, and
+			 keep data directory after run
+
+			 ./ossa-full.sh -pSke 'MyP@ssW0rd!' 
+	```
 
 
 ### Transfer Script to Remote Machine
@@ -69,3 +71,12 @@ $ scp ossa-full.sh user@host:.
 	```
 	./ossa-full.sh -Spke 'MyP@55w0rD123!'
 	```
+
+### Transfer Results to your machine
+Once ossa-full.sh has completed, you may want to fetch the compressed archive of data files to to the team performing the assessment.  The name and path of the archive will be presented to the user once he script has completed.
+
+* Download the script output using scp:
+
+```
+$ scp user@host:/tmp/
+```

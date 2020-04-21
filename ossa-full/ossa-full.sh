@@ -46,9 +46,9 @@ export OSSA_MADISON=true
 # USAGE #
 #########
 
-ossa-Usage() {
-    printf "\n\e[2GScript: ${FUNCNAME%%-*}.sh\n"
-    printf "\e[2GUsage: ${FUNCNAME%%-*}.sh [ Options ] \n"
+ossa-full_Usage() {
+    printf "\n\e[2GScript: ${FUNCNAME%%-*}.sh\n\n"
+    printf "\e[2GUsage: ${FUNCNAME%%-*}.sh [ Options ] \n\n"
     printf "\e[2GOptions:\n\n"
     printf "\e[3G -d, --dir\e[28GDirectory to store Open Source Security Assessment Data (Default: /tmp/ossa_files)\n\n"
     printf "\e[3G -s, --suffix\e[28GAppend given suffix to collected files (Default: \".$(hostname -f).$(lsb_release 2>/dev/null -cs)\"\n\n"
@@ -57,16 +57,16 @@ ossa-Usage() {
     printf "\e[3G -k, --keep\e[28GKeep OSSA Directory after script completes (Default: False)\n\n"
     printf "\e[3G -e, --encrypt\e[28GEncrypt OSSA Datafiles with given passphrase (Default: False)\n\n"
     printf "\e[3G -m, --no-madison\e[28GDo not run apt-cache madison against package manifest (Default: False)\n\n"
-    printf "\e[3G -S, --scan\e[28GInstall OpenSCAP & scan manifest for CVEs. Require sudo access\n\e[28Gif OpenSCAP is not installed. (Default: False)\n\n"
+    printf "\e[3G -S, --scan\e[28GInstall OpenSCAP & scan manifest for CVEs. Sudo access is required only\n\e[28Gif OpenSCAP is not installed. (Default: False)\n\n"
     printf "\e[3G -h, --help\e[28GThis message\n\n"
     printf "\e[2GExamples:\n\n"
     printf "\e[4GChange location of collected data:\n"
-    printf "\e[6G${FUNCNAME%%-*}.sh -d \$HOME/ossa_files\n"
+    printf "\e[6G./${FUNCNAME%%_*}.sh -d \$HOME/ossa_files\n"
     printf "\n\e[4GSet custom file suffix:\n"
-    printf "\e[6G${FUNCNAME%%-*}.sh -s \$(hostname -f).\$(lsb_release 2>/dev/null -sr)\n"
+    printf "\e[6G./${FUNCNAME%%_*}.sh -s \$(hostname -f).\$(lsb_release 2>/dev/null -sr)\n"
     printf "\n\e[4GPurge existing/leftover directory, perform CVE Scan, encrypt compressed archive of collected data, and\n\e[6Gkeep data directory after run\n\n"
-    printf '\e[6G'${FUNCNAME%%-*}'.sh -pSke '"'"'MyP@ssW0rd!'"'"' \n\n'
-};export -f ossa-Usage
+    printf '\e[6G./'${FUNCNAME%%_*}'.sh -pSke '"'"'MyP@ssW0rd!'"'"' \n\n'
+};export -f ossa-full_Usage
 
 ################
 # ARGS/OPTIONS #
@@ -84,7 +84,7 @@ while true ; do
         -k|--keep) export OSSA_KEEP=true;shift 1;;
         -S|--scan) export OSSA_SCAN=true;shift 1;;
         -m|--no-madison) export OSSA_MADISON=false;shift 1;;
-        -h|--help) ossa-Usage;exit 2;;
+        -h|--help) ossa-full_Usage;exit 2;;
         --) shift;break;;
     esac
 done
