@@ -41,6 +41,7 @@ export OSSA_PW=
 export OSSA_SCAN=false
 export OSSA_SUDO=false
 export OSSA_MADISON=true
+declare -ag OSSA_ORIGINS=(Canonical Ubuntu LP-PPA-maas)
 
 #########
 # USAGE #
@@ -57,6 +58,7 @@ ossa-full_Usage() {
     printf "\e[3G -k, --keep\e[28GKeep OSSA Directory after script completes (Default: False)\n\n"
     printf "\e[3G -e, --encrypt\e[28GEncrypt OSSA Datafiles with given passphrase (Default: False)\n\n"
     printf "\e[3G -m, --no-madison\e[28GDo not run apt-cache madison against package manifest (Default: False)\n\n"
+    printf "\e[3G -O, --origins\e[28GIf you are running a mirror of an official ubuntu repository,\n\e[28Gadd the URL(s) to they can be marked as official\n\n\e[28GNote: Format should be a single URL or a space/comma\n\e[34Gseparated list, surrounded by quotes\n\n"
     printf "\e[3G -S, --scan\e[28GInstall OpenSCAP & scan manifest for CVEs. Sudo access is required only\n\e[28Gif OpenSCAP is not installed. (Default: False)\n\n"
     printf "\e[3G -h, --help\e[28GThis message\n\n"
     printf "\e[2GExamples:\n\n"
@@ -67,12 +69,12 @@ ossa-full_Usage() {
     printf "\n\e[4GPurge existing/leftover directory, perform CVE Scan, encrypt compressed archive of collected data, and\n\e[6Gkeep data directory after run\n\n"
     printf '\e[6G./'${FUNCNAME%%_*}'.sh -pSke '"'"'MyP@ssW0rd!'"'"' \n\n'
 };export -f ossa-full_Usage
-
+                           Note: 
 ################
 # ARGS/OPTIONS #
 ################
 
-ARGS=$(getopt -o s::d:e:Spomkh --long suffix::,dir:,encrypt:,scan,purge,override,keep,no-madison,help -n ${PROG} -- "$@")
+ARGS=$(getopt -o s::d:e:O:Spomkh --long suffix::,dir:,encrypt:,origins:,scan,purge,override,keep,no-madison,help -n ${PROG} -- "$@")
 eval set -- "$ARGS"
 while true ; do
     case "$1" in
@@ -84,24 +86,12 @@ while true ; do
         -k|--keep) export OSSA_KEEP=true;shift 1;;
         -S|--scan) export OSSA_SCAN=true;shift 1;;
         -m|--no-madison) export OSSA_MADISON=false;shift 1;;
+        -O|--origins) declare -ag EXTRA_ORIGINS=($(printf "${2//[,| ]/\\n}\n"));shift 2;;
         -h|--help) ossa-full_Usage;exit 2;;
         --) shift;break;;
     esac
 done
 
-########
-# ToDo #
-########
-
-# Idea to handle systems that use mirrors
-# Parse /var/lib/apt/lists/*Release files and see if the mirror's origin is Ubuntu
-# Then convert the Release file to a URL and add to temp copy of mirror.cfg
-#http://ubuntu-archive.orangebox.me/ubuntu/
-#http://canonical-archive.orangebox.me/ubuntu/
-#http://cloud-archive.orangebox.me/ubuntu/
-#http://ppa-archive.orangebox.me/maas/2.7/ubuntu
-#http://private-ppa.orangebox.me/maas-image-builder-partners/stable/ubuntu/
-#http://security-archive.orangebox.me/ubuntu/
 
 ###################
 # START OF SCRIPT #
@@ -134,6 +124,10 @@ else
     export OSSA_SUFFX=
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: File suffix is \e[38;2;0;160;200mNULL\e[0m\n"
 fi
+# Report customer provided origin list
+if [[ -n ${EXTRA_ORIGINS[@]} && ${#EXTRA_ORIGINS[@]} -ge 1 ]]:then
+	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: The following mirror URLs were provided as official Ubuntu or Canonical Mirrors:\n"
+	printf '\e[12G - \e[38;2;0;160;200m%s\e[0m\n' ${EXTRA_ORIGINS[@]}
 # Added ability to scan for CVEs
 # This requires either that OpenSCAP is already installed or root level access to install the package
 printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Scan option is \e[38;2;0;160;200m${OSSA_SCAN^^}\e[0m\n"
@@ -142,7 +136,7 @@ if [[ ${OSSA_SCAN} = true ]];then
     if [[ $(dpkg 2>/dev/null -l openscap-daemon|awk '/openscap-daemon/{print $1}') = ii ]];then
         printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: OpenSCAP is \e[1malready installed\e[0m.  \e[38;2;0;255;0mRoot-level access is not required\e[0m.\n"
     else
-        printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: OpenSCAP is \e[1mNOT\e[0m installed.  \e[38;2;255;0;0mRoot-level access is required\e[0m.  Checking credentials...\n"
+        printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: OpenSCAP is \e[1mNOT\e[0m installed.  \e[38;2;255;200;0mRoot-level access will be required\e[0m.  Checking credentials...\n"
         #Root/sudo check
         [[ ${EUID} -eq 0 ]] && { export SCMD="";[[ ${DEBUG} = True ]] && { printf "\e[38;2;255;200;0mDEBUG:\e[0m User is root\n\n";export OSSA_SUDO=true; }; } || { [[ ${EUID} -ne 0 && -n $(id|grep -io sudo) ]] && { export SCMD=sudo;export OSSA_SUDO=true; } || { export SCMD="";printf "\e[38;2;255;0;0mERROR:\e[0m User (${USER}) does not have sudo permissions.\e[0m Quitting.\e[0m\n\n";export OSSA_SUDO=false; }; }
         [[ ${OSSA_SUDO} = false ]] && { export OSSA_SCAN=false;printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Insufficent sudo privilages.  CVE Scanning will not occur\n"; }
@@ -337,6 +331,12 @@ export USS_B64='IyEvdXNyL2Jpbi9weXRob24zCgppbXBvcnQgYXB0CmltcG9ydCBhcmdwYXJzZQpp
 printf "\n\e[2G\e[1mRun ubuntu-security-status\e[0m\n"
 if [[ -f /tmp/ubuntu-security-status ]];then
     cp /usr/share/ubuntu-release-upgrader/mirrors.cfg ${REL_DIR}/mirror.cfg
+		find 2>/dev/null /var/lib/apt/lists -maxdepth 1 -regextype "posix-extended" -iregex '.*(Release$)' -exec \
+			grep -m1 -lE "$(printf '^Origin:.*%s$\n' ${OSSA_ORIGINS[@]}|paste -sd'|')" {} \;| \
+			sed 's|/var/lib/apt/lists/|http://|g;s|_dists_||g;s|_ubuntu.*$|/ubuntu/ |g'| \
+			sort -uV| \
+			tee -a ${REL_DIR}/mirror.cfg
+		[[ -n ${EXTRA_ORIGINS[@]} && ${#EXTRA_ORIGINS[@]} -ge 1 ]] && { printf '%s\n' ${EXTRA_ORIGINS[@]}|tee -a ${REL_DIR}/mirror.cfg; }
     sed "s|/usr/share/ubuntu-release-upgrader/mirrors.cfg|${REL_DIR}/mirror.cfg|g" -i /tmp/ubuntu-security-status
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running ubuntu-security-status\n"
     /tmp/ubuntu-security-status|sed 's/^.*$/      &/g'

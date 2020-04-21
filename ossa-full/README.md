@@ -28,6 +28,12 @@ This script should be ran from the system that is being assessed
 
 		 -m, --no-madison        Do not run apt-cache madison against package manifest (Default: False)
 
+		 -O, --origins           If you are running a mirror of an official ubuntu repository,
+														 add the URL(s) to they can be marked as official
+
+														 Note: Format should be a single URL or a space/comma
+																	 separated list, surrounded by quotes
+
 		 -S, --scan              Install OpenSCAP & scan manifest for CVEs. Sudo access is required only
 														 if OpenSCAP is not installed. (Default: False)
 
