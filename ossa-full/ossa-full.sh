@@ -125,7 +125,7 @@ else
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: File suffix is \e[38;2;0;160;200mNULL\e[0m\n"
 fi
 # Report customer provided origin list
-if [[ -n ${EXTRA_ORIGINS[@]} && ${#EXTRA_ORIGINS[@]} -ge 1 ]]:then
+if [[ -n ${EXTRA_ORIGINS[@]} && ${#EXTRA_ORIGINS[@]} -ge 1 ]];then
 	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: The following mirror URLs were provided as official Ubuntu or Canonical Mirrors:\n"
 	printf '\e[12G - \e[38;2;0;160;200m%s\e[0m\n' ${EXTRA_ORIGINS[@]}
 fi
