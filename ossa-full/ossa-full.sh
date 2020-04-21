@@ -128,6 +128,7 @@ fi
 if [[ -n ${EXTRA_ORIGINS[@]} && ${#EXTRA_ORIGINS[@]} -ge 1 ]]:then
 	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: The following mirror URLs were provided as official Ubuntu or Canonical Mirrors:\n"
 	printf '\e[12G - \e[38;2;0;160;200m%s\e[0m\n' ${EXTRA_ORIGINS[@]}
+fi
 # Added ability to scan for CVEs
 # This requires either that OpenSCAP is already installed or root level access to install the package
 printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Scan option is \e[38;2;0;160;200m${OSSA_SCAN^^}\e[0m\n"
