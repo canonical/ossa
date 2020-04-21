@@ -73,10 +73,17 @@ $ scp ossa-full.sh user@host:.
 	```
 
 ### Transfer Results to your machine
-Once ossa-full.sh has completed, you may want to fetch the compressed archive of data files to to the team performing the assessment.  The name and path of the archive will be presented to the user once he script has completed.
+Once ossa-full.sh has completed, you may want to fetch the compressed archive of data files to to the team performing the assessment.
+* The name and path of the archive will be presented to the user once he script has completed:
+```
+ Open Source Security Assessment completed in 00:01:43
+
+ Encrypted data collected during the Open Source Security Assessment is located at
+ /tmp/ossa-datafile.encrypted.orangebox20.focal.tgz
+```
 
 * Download the script output using scp:
 
 ```
-$ scp user@host:/tmp/
+$ scp user@host:/tmp/ossa-datafile.encrypted.orangebox20.focal.tgz .
 ```
