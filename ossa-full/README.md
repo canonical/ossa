@@ -45,9 +45,12 @@ This script should be ran from the system that is being assessed
      ossa.sh -pSke 'MyP@ssW0rd!' 
 ```
 
+
 ### Transfer Script to Remote Machine
 Your current working directory must be in ossa/ossa-full, where this file
-is located. Once in ossa/ossa-full you can transfer the script a remote system using scp:
+is located. Once in ossa/ossa-full you can:
+
+* Transfer the script a remote system using scp:
 
 ```
 $ scp ossa-full.sh user@host:.
@@ -55,11 +58,14 @@ $ scp ossa-full.sh user@host:.
 
 ### Run Script on  Remote Machine
 * ssh to remote machine:
-	````$ ssh user@host
-	````
+	```
+	$ ssh user@host
+	```
 * Get list of script options:
-	````./ossa-full.sh -h
-	````
+	```
+	./ossa-full.sh -h
+	```
 * Run script using desired options:
-	````./ossa-full.sh -Spke 'MyP@55w0rD123!'
-	````
+	```
+	./ossa-full.sh -Spke 'MyP@55w0rD123!'
+	```
