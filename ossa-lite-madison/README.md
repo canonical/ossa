@@ -1,3 +1,9 @@
+# Lite Madison Script (ossa-lite-madison)
+This script runs from a local system against a remote target
+
+## Script Duration
+ossa-lite-madison should complete is less than 2 minutes
+
 ## Script Options
 There is only one option/argument required for ossa-lite-madison.sh
 * Credentials for the remote host that you wish to scan
@@ -12,9 +18,6 @@ There is only one option/argument required for ossa-lite-madison.sh
 	``` 
 	./Usage: ossa-lite-madison.sh user@host
 	```
-
-## Script duration
-ossa-lite-madison should complete is less than 2 minutes
 
 ## Data is automatically collected data locally
 Your current working directory must be in ossa/ossa-lite-madison, where this file

@@ -1,6 +1,9 @@
 # Full Script (ossa-full)
 This script should be ran from the system that is being assessed
 
+## Script Duration
+ossa-full.sh should complete is less than 5 minutes, but will usually finish much quicker on modern systems.
+
 ## Script Options
 * Get script options by running the following:
 ```

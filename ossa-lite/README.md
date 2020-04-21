@@ -1,3 +1,9 @@
+# Lite Script (ossa-lite.sh)
+This script runs from a local system against a remote target
+
+## Script Duration
+ossa-lite should complete is less than 30 seconds
+
 ## Script Options
 There is only one option/argument required for ossa-lite.sh
 * Credentials for the remote host that you wish to scan
@@ -12,9 +18,6 @@ There is only one option/argument required for ossa-lite.sh
 	``` 
 	./Usage: ossa-lite.sh user@host
 	```
-
-## Script duration
-ossa-lite should complete is less than 30 seconds
 
 ## Data is automatically collected data locally
 Your current working directory must be in ossa/ossa-lite, where this file
