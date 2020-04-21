@@ -1,5 +1,7 @@
-# Lite Madison Script (ossa-lite-madison)
-This script runs from a local system against a remote target
+# ossa-lite-madison
+This script runs from a local system against a remote host
+* Local System:  Your Mac/Ubuntu/Windows 10 (WSL) laptop
+* Remote Host: A server/vm/container running Ubuntu 14.04 or later
 
 ## Script Duration
 ossa-lite-madison should complete is less than 2 minutes
@@ -24,16 +26,19 @@ Your current working directory must be in ossa/ossa-lite-madison, where this fil
 is located. Once in ossa/ossa-lite-madison you can:
 
 * Run Script against Remote Machine using a hostname
+
 	```
 	./ossa-lite-madison.sh myuser@my-ubuntu-instance.example.org
 	```
 * Run Script against Remote Machine using an IP address
+
 	```
 	./ossa-lite-madison.sh myuser@172.27.20.25
 	```
 
 ### Data will automatically be collected on your local machine
-Once ossa-lite-madison.sh has completed, the script will print a pointer to the local compressed archive
+Once ossa-lite-madison.sh has completed, the script will show the location of the local compressed archive
+
 	```
 	Open Source Security Assessment Lite has completed.
 

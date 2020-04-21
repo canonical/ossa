@@ -33,7 +33,3 @@ git clone https://github.com/ThinGuy/ossa.git
 
 * See README.md in each directory for documentation for notes on how to run each script and a description about the information that is collected.
 
-
-## Running the scripts
-
-* See README.md in each directory for documentation for notes on how to run each script and a description about the information that is collected.
