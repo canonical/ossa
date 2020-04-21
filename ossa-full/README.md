@@ -5,8 +5,8 @@ This script should be ran from the system that is being assessed
 * Get script options by running the following:
 ```
 ./ossa-full.sh -h
-	```
-	* Help options will be displayed
+```
+* Help options will be displayed
 	``` 
 	 Script: ossa.sh
 
