@@ -395,10 +395,10 @@ printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Checking for embedded credentials i
 # NETSTAT SNAPSHOT #
 ####################
 printf "\n\e[2G\e[1mTake Snapshot of Network Statistics (netstat -an)\e[0m\n"
-if (command -v netstat &>/dev/null);then NETSTAT=$(command -v ss);elif (command -v ss &>/dev/null);then NETSTAT=$(command -v ss);else NETSTAT="";fi
+if [[ -n $(command -v netstat) ]];then NETSTAT=$(command -v netstat);elif [[ -n $(command -v ss) ]];then NETSTAT=$(command -v ss);else NETSTAT="";fi
 if [[ -n ${NETSTAT} ]];then
 	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running netstat -an\n"
-	[[ -n ${SCMD} ]] && { ${SCMD} netstat 2>/dev/null -anp|tee 1>/dev/null ${UTIL_DIR}/netstat.out${OSSA_SUFFX}; } || { netstat 2>/dev/null -an|tee 1>/dev/null ${UTIL_DIR}/netstat.out${OSSA_SUFFX}; }
+	[[ -n ${SCMD} ]] && { ${SCMD} ${NETSTAT} 2>/dev/null -anp|tee 1>/dev/null ${UTIL_DIR}/netstat.out${OSSA_SUFFX}; } || {  ${NETSTAT} 2>/dev/null -an|tee 1>/dev/null ${UTIL_DIR}/netstat.out${OSSA_SUFFX}; }
 	[[ -s ${UTIL_DIR}/netstat.out${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created netstat snapshot file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create netstat snapshot file\n" ; }
 else
 	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Neither \"netstat\" or \"ss\" are installed. Skipping\n"
@@ -457,6 +457,6 @@ read -t 20 -p "Hit ENTER or wait 20 seconds to clear OSSA data from the screen"
 tput sgr0; tput cnorm; tput rmcup
 echo
 # Show elapsed time
-printf "\n\e[2G\e[1mOpen Source Security Assessment completed in ${OSSA_TIME}\e[0m\n\n"
+printf "\e[2G\e[1mOpen Source Security Assessment completed in ${OSSA_TIME}\e[0m\n\n"
 # Show tarball location
-[[ -n ${OSSA_PW} ]] && { printf "\n\n\e[2GEncrypted data collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; } || { printf "\n\n\e[2GData collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; }
+[[ -n ${OSSA_PW} ]] && { printf "\e[2GEncrypted data collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; } || { printf "\n\n\e[2GData collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; }
