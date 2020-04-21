@@ -25,7 +25,7 @@ git clone https://github.com/ThinGuy/ossa.git
 			* If OpenSCAP is already installed, sudo access  is not required to perform the scan
 			* If the CVE Scan option is selected AND sudo access is detected, some of the gather tools will collect more information than if ran as a non-privileged account.
 * ssh access to the above machine for the "lite" scripts
-	* MacOS, Linux, and Windows Subsystem for Linux (WSL) all work
+	* MacOS, Linux, and Windows 10 with "Windows Subsystem for Linux" (WSL) all work
 	* Windows users can make use of powershell, but that is an exercise left to the user
 
 
