@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-[[ -z ${1} || ${1} =~ '-h' ]] && { printf "Usage: ${0##*/} user@host\n";exit 2; } || { SSH_HOST="${1}"; }
+[[ -z ${1} || ${1} =~ '-h' ]] && { printf "Usage: ./${0##*/} user@host\n";exit 2; } || { SSH_HOST="${1}"; }
 trap 'tput cnorm;trap - INT TERM EXIT KILL QUIT;exit 0' INT TERM EXIT KILL QUIT;
 tput civis
 PROG=${0##*/}
@@ -19,6 +19,6 @@ ps 2>/dev/null -auxwww > /tmp/ps-auxwww.$$;
 [[ -f /etc/lsb-release ]] && { LSB_RELEASE_TMP=/tmp/lsb-release.$$;cp /etc/lsb-release ${LSB_RELEASE_TMP}; } || { [[ $(command -v lsb_release) ]] && { for i in ID RELEASE CODENAME DESCRIPTION;do echo "DISTRIB_${i}=\"$(lsb_release -s$(echo ${i,,}|cut -c1))\""; done|tee 1>/dev/null ${LSB_RELEASE_TMP}; } || { LSB_RELEASE_TMP=; }; }
 dpkg -l|awk "/^ii/{print \$2\"\\t\"\$3}"|xargs -rn2 -P0 bash -c '"'"'apt-cache madison ${0}|head -n1|awk "{print \$1\"|\"\$3\"|\"\$6}"|xargs'"'"'|tee 1>/dev/null /tmp/apt-madison.$$
 FILES="${DPKG_STATUS_TMP##*/} ${LSB_RELEASE_TMP##*/} netstat-an.$$ dpkg-l.$$ snap-list.$$ apt-policy.$$ ps-auxwww.$$ apt-lists.$$.tar apt-sources.$$.tar apt-madison.$$"
-tar -C /tmp -cf - ${FILES}'|gzip -c|tee 1>/dev/null /tmp/ossa-lite-madison.tgz
+tar -C /tmp -cf - ${FILES}'|gzip -c|tee 1>/dev/null /tmp/ossa-lite-madison.${SSH_HOST##*@}.tgz
 echo -e "\nOpen Source Security Assessment Lite (Madison) has completed.\n"
-echo -e "Please send /tmp/ossa-lite-madison.tgz to your Canonical representative.\n"
+echo -e "Please send /tmp/ossa-lite-madison.${SSH_HOST##*@}.tgz to your Canonical representative.\n"

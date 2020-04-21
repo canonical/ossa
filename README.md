@@ -3,23 +3,14 @@
 # Open Source Security Audit (ossa)
 A set of non-invasive, lightweight scripts to gather information about [open source packages](https://ubuntu.com/about/packages) that are being used on [LTS versions](https://ubuntu.com/about/release-cycle) of [Ubuntu](https://ubuntu.com/about) for the purpose of a [security](https://usn.ubuntu.com/) and [support](https://ubuntu.com/support) assessment
 
-**Note:** 
- - This is a work in progress
-
 ## Available Scripts
 
 * [ossa-full](https://github.com/ThinGuy/ossa/tree/master/ossa-full) - Gathers information about packages and processes, scan for CVEs,etc
 * [ossa-lite](https://github.com/ThinGuy/ossa/tree/master/ossa-lite) - Script intended to be ran on a remote system via ssh.  This version runs the fastest, but lacks package origin information.
 * [ossa-lite-madison](https://github.com/ThinGuy/ossa/tree/master/ossa-lite-madison) - Script intended to be ran on a remote system via ssh.  This version grabs [apt-cache madison](https://manpages.ubuntu.com/manpages/bionic/man8/apt-cache.8.html) information so package origin can be derived
-	* See README.md in each directory for documentation for notes on how to run each script and a description about the information that is collected.
 
-## Downloading the Scripts
 
-```
-git clone https://github.com/ThinGuy/ossa.git
-```
-
-## Prerequisites (to run the scripts)
+### Prerequisites
 
 * A machine (physical, virtual, container) running Ubuntu 14.04 or later
 * A standard user (non-privileged) account on the machine
@@ -30,3 +21,18 @@ git clone https://github.com/ThinGuy/ossa.git
 * ssh access to the above machine for the "lite" scripts
 	* MacOS, Linux, and Windows Subsystem for Linux (WSL) all work
 	* Windows users can make use of powershell, but that is an exercise left to the user
+
+
+## Running the scripts
+
+* See README.md in each directory for documentation for notes on how to run each script and a description about the information that is collected.
+
+## Downloading the Scripts
+
+```
+git clone https://github.com/ThinGuy/ossa.git
+```
+
+## Running the scripts
+
+* See README.md in each directory for documentation for notes on how to run each script and a description about the information that is collected.

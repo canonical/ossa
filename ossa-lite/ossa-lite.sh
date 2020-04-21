@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-[[ -z ${1} || ${1} =~ '-h' ]] && { printf "Usage: ${0##*/} user@host\n";exit 2; } || { SSH_HOST="${1}"; }
+[[ -z ${1} || ${1} =~ '-h' ]] && { printf "Usage: ./${0##*/} user@host\n";exit 2; } || { SSH_HOST="${1}"; }
 trap 'tput cnorm;trap - INT TERM EXIT KILL QUIT;exit 0' INT TERM EXIT KILL QUIT;
 tput civis
 PROG=${0##*/}
@@ -18,6 +18,6 @@ ps 2>/dev/null -auxwww > /tmp/ps-auxwww.$$;
 [[ -f /var/lib/dpkg/status ]] && { DPKG_STATUS_TMP=/tmp/dpkg-status.$$;cp /var/lib/dpkg/status ${DPKG_STATUS_TMP}; } || { DPKG_STATUS_TMP=; }
 [[ -f /etc/lsb-release ]] && { LSB_RELEASE_TMP=/tmp/lsb-release.$$;cp /etc/lsb-release ${LSB_RELEASE_TMP}; } || { [[ $(command -v lsb_release) ]] && { for i in ID RELEASE CODENAME DESCRIPTION;do echo "DISTRIB_${i}=\"$(lsb_release -s$(echo ${i,,}|cut -c1))\""; done|tee 1>/dev/null ${LSB_RELEASE_TMP}; } || { LSB_RELEASE_TMP=; }; }
 FILES="${DPKG_STATUS_TMP##*/} ${LSB_RELEASE_TMP##*/} netstat-an.$$ dpkg-l.$$ snap-list.$$ apt-policy.$$ ps-auxwww.$$ apt-lists.$$.tar apt-sources.$$.tar"
-tar -C /tmp -cf - ${FILES}'|gzip -c|tee 1>/dev/null /tmp/ossa-lite.tgz
+tar -C /tmp -cf - ${FILES}'|gzip -c|tee 1>/dev/null /tmp/ossa-lite.${SSH_HOST##*@}.tgz
 echo -e "\nOpen Source Security Assessment Lite has completed.\n"
-echo -e "Please send /tmp/ossa-lite.tgz to your Canonical representative.\n"
+echo -e "Please send /tmp/ossa-lite.${SSH_HOST##*@}.tgz to your Canonical representative.\n"
