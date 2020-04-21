@@ -6,10 +6,13 @@ ossa-full.sh should complete is less than 5 minutes, but will usually finish muc
 
 ## Script Options
 * Get script options by running the following:
-```
-./ossa-full.sh -h
-```
+
+	```
+	./ossa-full.sh -h
+	```
+
 * Help options will be displayed
+
 	``` 
 	 Script: ossa.sh
 
@@ -63,36 +66,43 @@ is located. Once in ossa/ossa-full you can:
 
 * Transfer the script a remote system using scp:
 
-```
-$ scp ossa-full.sh user@host:.
-```
+	```
+	scp ossa-full.sh user@host:.
+	```
 
 ### Run Script on  Remote Machine
+
 * ssh to remote machine:
+
 	```
-	$ ssh user@host
+	ssh user@host
 	```
+
 * Get list of script options:
+
 	```
 	./ossa-full.sh -h
 	```
+
 * Run script using desired options:
+
 	```
 	./ossa-full.sh -Spke 'MyP@55w0rD123!'
 	```
 
 ### Transfer Results to your machine
 Once ossa-full.sh has completed, you may want to fetch the compressed archive of data files to to the team performing the assessment.
-* The name and path of the archive will be presented to the user once he script has completed:
-```
- Open Source Security Assessment completed in 00:01:43
+* The name and path of the archive will be presented once the script has completed:
 
- Encrypted data collected during the Open Source Security Assessment is located at
- /tmp/ossa-datafile.encrypted.orangebox20.focal.tgz
-```
+	```
+	 Open Source Security Assessment completed in 00:01:43
+
+	 Encrypted data collected during the Open Source Security Assessment is located at
+	 /tmp/ossa-datafile.encrypted.orangebox20.focal.tgz
+	```
 
 * Download the script output using scp:
 
-```
-$ scp user@host:/tmp/ossa-datafile.encrypted.orangebox20.focal.tgz .
-```
+	```
+	scp user@host:/tmp/ossa-datafile.encrypted.orangebox20.focal.tgz .
+	```
