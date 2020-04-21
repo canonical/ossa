@@ -3,6 +3,12 @@
 # Open Source Security Audit (ossa)
 A set of non-invasive, lightweight scripts to gather information about [open source packages](https://ubuntu.com/about/packages) that are being used on [LTS versions](https://ubuntu.com/about/release-cycle) of [Ubuntu](https://ubuntu.com/about) for the purpose of a [security](https://usn.ubuntu.com/) and [support](https://ubuntu.com/support) assessment
 
+## Downloading the Scripts
+
+```
+git clone https://github.com/ThinGuy/ossa.git
+```
+
 ## Available Scripts
 
 * [ossa-full](https://github.com/ThinGuy/ossa/tree/master/ossa-full) - Gathers information about packages and processes, scan for CVEs,etc
@@ -27,11 +33,6 @@ A set of non-invasive, lightweight scripts to gather information about [open sou
 
 * See README.md in each directory for documentation for notes on how to run each script and a description about the information that is collected.
 
-## Downloading the Scripts
-
-```
-git clone https://github.com/ThinGuy/ossa.git
-```
 
 ## Running the scripts
 
