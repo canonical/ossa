@@ -388,6 +388,8 @@ if [[ -n $(find 2>/dev/null ${SOURCES_LIST_D} -type f) ]];then
 			OSSA_COPY_ERRORS+=( "${SOURCES_LIST_D}/*" )
 		fi
 	fi
+else
+	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: No part files exist in sources.list.d. Skipping\n"
 fi
 export OSSA_CREDS_DETECTED=false
 
@@ -443,7 +445,7 @@ fi
 
 [[ ${OSSA_SCAN} = true ]] && { printf "\n\e[2G\e[1mDownload OVAL Data for CVE scanning\e[0m\n"; } || { printf "\n\e[2G\e[1mDownload OVAL Data for offline CVE scanning\e[0m\n"; }
 export SCAN_RELEASE=$(lsb_release -sc)
-OVAL_URI="https://people.canonical.com/~ubuntu-security/oval/oci.com.ubuntu.${SCAN_RELEASE}.cve.oval.xml.bz2"
+OVAL_URI="https://people.canonical.com/~ubuntu-security/oval/oci.com.ubuntu.${SCAN_RELEASE,,}.cve.oval.xml.bz2"
 TEST_OVAL=$(curl -slSL --connect-timeout 5 --max-time 20 --retry 5 --retry-delay 1 -w %{http_code} -o /dev/null ${OVAL_URI} 2>&1)
 [[ ${TEST_OVAL:(-3)} -eq 200 ]] && { printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Downloading OVAL data for Ubuntu ${SCAN_RELEASE^}\n";curl -slSL --connect-timeout 5 --max-time 20 --retry 5 --retry-delay 1 ${OVAL_URI} -o- |bunzip2 -d|tee 1>/dev/null ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}); }
 [[ ${TEST_OVAL:(-3)} -eq 404 ]] && { printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: OVAL data file for Ubuntu ${SCAN_RELEASE^} is not available. Skipping download.\n"; }
@@ -465,6 +467,8 @@ if [[ ${OSSA_SCAN} = true && -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) ]];the
 	[[ -s ${UTIL_DIR}/cve-stats.${OSSA_SUFFX} ]] && { export CVE_STATUS="$(cat ${UTIL_DIR}/cve-stats.${OSSA_SUFFX})"; }
 elif [[ ${TEST_OVAL:(-3)} -eq 404 ]];then
 	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Skipping CVE scan since OVAL data for Ubuntu ${SCAN_RELEASE^} is not available.\n";
+else
+	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Skipping CVE scan due to missing OVAL data.\n\e[5GExpected to find it @ ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}).\n";
 fi
 
 ######################
