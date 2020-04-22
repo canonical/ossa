@@ -416,7 +416,7 @@ if [[ -f /tmp/ubuntu-security-status ]];then
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running ubuntu-security-status (standard)\n\n"
     /tmp/ubuntu-security-status|tee 1>/dev/null ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX}
     cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX}|awk '/^[0-9]/,/^$/{gsub(/^/,"     &",$0);print}'
-    export SEC_STATUS="$(cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX}|awk '/^[0-9]/,/^$/{gsub(/^/," &",$0);print}')"
+    export SEC_STATUS="$(cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX}|sed -n '/^[0-9]/,/^$/p'|sed 's/^.*$/ &/g')"
     # make a more verbose report
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running ubuntu-security-status --thirdparty\n"
     /tmp/ubuntu-security-status --thirdparty 2>&1|tee 1>/dev/null ${UTIL_DIR}/ubuntu-security-status.thirdparty.${OSSA_SUFFX}
@@ -451,7 +451,7 @@ if [[ ${OSSA_SCAN} = true && -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) ]];the
 	[[ -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) && -h ${OVAL_DIR}/${SCAN_RELEASE}.manifest ]] && { printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Initiating CVE Scan using OVAL data for Ubuntu ${SCAN_RELEASE^}\n"; }
 	[[ -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) && -h ${OVAL_DIR}/${SCAN_RELEASE}.manifest ]] && { oscap oval eval --report ${RPRT_DIR}/oscap-cve-scan-report.${OSSA_SUFFX}.html ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2})|awk -vF=0 -vT=0 '{if ($NF=="false") F++} {if ($NF=="true") T++} END {print "CVE Scan Results (Summary)\nCommon Vulnerabilities Addressed: "F"\nCurrent Vulnerability Exposure: "T}'|tee ${UTIL_DIR}/cve-stats.${OSSA_SUFFX}; }
 	[[ -s ${RPRT_DIR}/oscap-cve-scan-report.${OSSA_SUFFX}.html ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: OpenSCAP CVE Report is located @ ${RPRT_DIR}/oscap-cve-scan-report.${OSSA_SUFFX}.html\n"; }  || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Encountered issues running OpenSCAP CVE Scan.  Report not available.\n" ; }
-	[[ -f ${UTIL_DIR}/cve-stats.${OSSA_SUFFX} ]] && { export CVE_STATUS="$(cat ${UTIL_DIR}/cve-stats.${OSSA_SUFFX})"; }
+	[[ -s ${UTIL_DIR}/cve-stats.${OSSA_SUFFX} ]] && { export CVE_STATUS="$(${UTIL_DIR}/cve-stats.${OSSA_SUFFX})"; }
 elif [[ ${TEST_OVAL:(-3)} -eq 404 ]];then
 	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Skipping CVE scan since OVAL data for Ubuntu ${SCAN_RELEASE^} is not available.\n";
 fi
@@ -612,7 +612,7 @@ fi
 echo
 #show security status
 [[ -n ${SEC_STATUS} ]] && { echo "${SEC_STATUS}"; }
-[[ -s ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} ]] && { cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} |awk '/^En|so far|^$|Advan/{gsub(/^.*$/," &");print}'; }
+[[ -s ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} ]] && { cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} |grep -E '^En|so far|^$|Advan'|sed 's/^.*$/ &/g'; }
 
 #show cve stats
 echo
