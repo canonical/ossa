@@ -1,4 +1,5 @@
 # ossa-full.sh
+<img width=600 src="https://raw.githubusercontent.com/ThinGuy/svg/master/ossa-full.png?sanitize=true" title="ossa-full.sh -Sk">
 This script should be run from the system that is being assessed
 
 ## Script Duration
