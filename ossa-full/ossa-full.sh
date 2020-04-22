@@ -414,9 +414,9 @@ if [[ -f /tmp/ubuntu-security-status ]];then
 		[[ -n ${EXTRA_ORIGINS[@]} && ${#EXTRA_ORIGINS[@]} -ge 1 ]] && { printf '%s\n' ${EXTRA_ORIGINS[@]}|tee -a ${REL_DIR}/mirror.cfg; }
     sed "s|/usr/share/ubuntu-release-upgrader/mirrors.cfg|${REL_DIR}/mirror.cfg|g" -i /tmp/ubuntu-security-status
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running ubuntu-security-status (standard)\n\n"
-    /tmp/ubuntu-security-status|tee 1>/dev/null ${UTIL_DIR}/ubuntu-security-status.standard
-    cat ${UTIL_DIR}/ubuntu-security-status.standard|sed 's|^.*$|     &|g'
-    export SEC_STATUS="$(cat ${UTIL_DIR}/ubuntu-security-status.standard)"
+    /tmp/ubuntu-security-status|tee 1>/dev/null ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX}
+    cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX}|sed 's|^.*$|     &|g'
+    export SEC_STATUS="$(cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX}|awk '/^[0-9]/,/^$/{gsub(/^/,"     &",$0);print}')"
     # make a more verbose report
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running ubuntu-security-status --thirdparty\n"
     /tmp/ubuntu-security-status --thirdparty 2>&1|tee 1>/dev/null ${UTIL_DIR}/ubuntu-security-status.thirdparty.${OSSA_SUFFX}
@@ -615,7 +615,8 @@ fi
 [[ -n ${CVE_STATUS} ]] && { echo "${CVE_STATUS}"|sed 's/^.*$/ &/g'; }
 
 #show security status
-[[ -n ${SEC_STATUS} ]] && { echo "${SEC_STATUS}"|sed 's/^.*$/ &/g'
+[[ -n ${SEC_STATUS} ]] && { echo "${SEC_STATUS}"|sed 's/^.*$/ &/g'; }
+[[ -s ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} ]] && { cat ubuntu-security-status.standard |awk '/^En|so far|^$|Advan/'|sed 1,2d; }
 
 # Show tarball location
 [[ -n ${OSSA_PW} ]] && { printf "\n\e[2GEncrypted data collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; } || { printf "\e[2GData collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; }
