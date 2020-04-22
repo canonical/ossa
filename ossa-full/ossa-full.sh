@@ -523,7 +523,7 @@ fi
 printf "\n\e[2G\e[1mList open files (lsof)\e[0m\n"
 if [[ $(command -v lsof) ]];then
 	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running lsof\n"
-	${SCMD} lsof -i 2>/dev/null|tee 1>/dev/null ${UTIL_DIR}/lsof.out.${OSSA_SUFFX};
+	${SCMD} lsof 2>/dev/null|tee 1>/dev/null ${UTIL_DIR}/lsof.out.${OSSA_SUFFX};
 	[[ -s ${UTIL_DIR}/lsof.out.${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created lsof snapshot file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create lsof snapshot file\n" ; }
 else
 	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: lsof not installed. Skipping\n"
@@ -609,16 +609,15 @@ if [[ ${OSSA_MADISON} = true ]];then
 		-re '1s/'${OSSA_RELEASE}'-proposed/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g' \
 		-re 's/main|universe/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/g' \
 		-re 's/multiverse.*$|restricted.*$/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g')|sed 's/^.*$/ &/g'
-		printf '\n\n'
 fi
+
+#show security status
+[[ -n ${SEC_STATUS} ]] && { echo "${SEC_STATUS}"; }
+[[ -s ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} ]] && { cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} |awk '/^En|so far|^$|Advan/'; }
 
 #show cve stats
 [[ -n ${CVE_STATUS} ]] && { echo "${CVE_STATUS}"|sed 's/^.*$/ &/g'; }
 echo
-
-#show security status
-[[ -n ${SEC_STATUS} ]] && { echo "${SEC_STATUS}"; }
-[[ -s ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} ]] && { cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} |awk '/^En|so far|^$|Advan/'|sed 1,2d; }
 
 # Show tarball location
 [[ -n ${OSSA_PW} ]] && { printf "\n\e[2GEncrypted data collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; } || { printf "\e[2GData collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; }
