@@ -416,7 +416,7 @@ if [[ -f /tmp/ubuntu-security-status ]];then
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running ubuntu-security-status (standard)\n\n"
     /tmp/ubuntu-security-status|tee 1>/dev/null ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX}
     cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX}|awk '/^[0-9]/,/^$/{gsub(/^/,"     &",$0);print}'
-    export SEC_STATUS="$(cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX}|awk '/^[0-9]/,/^$/{gsub(/^/,"     &",$0);print}')"
+    export SEC_STATUS="$(cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX}|awk '/^[0-9]/,/^$/{gsub(/^/,"  &",$0);print}')"
     echo
     # make a more verbose report
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running ubuntu-security-status --thirdparty\n"
@@ -617,7 +617,7 @@ fi
 echo
 
 #show security status
-[[ -n ${SEC_STATUS} ]] && { echo "${SEC_STATUS}"|sed 's/^.*$/ &/g'; }
+[[ -n ${SEC_STATUS} ]] && { echo "${SEC_STATUS}"; }
 [[ -s ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} ]] && { cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} |awk '/^En|so far|^$|Advan/'|sed 1,2d; }
 
 # Show tarball location
