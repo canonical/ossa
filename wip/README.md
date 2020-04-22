@@ -20,7 +20,7 @@ This script accepts a package manifest as an argument and then performs an OpenS
 
 ### Usage
 
-* There is only one option/argument required for ossa-lite.sh
+* There is only one option/argument required for cvescan-file.sh
 	* The path of the manifest file 
 	
 ```
