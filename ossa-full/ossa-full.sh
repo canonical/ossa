@@ -30,18 +30,21 @@ TZ=UTC export NOW=$(date +%s)sec
 
 export PROG=${0##*/}
 export OSSA_DIR='/tmp/ossa_files'
-export OSSA_SUFFX="$(hostname -s).$(lsb_release 2>/dev/null -sc)"
+export OSSA_HOST=$(hostname -s)
+export OSSA_RELEASE="$(lsb_release 2>/dev/null -sc)"
+export OSSA_SUFFX="${OSSA_HOST}.${OSSA_RELEASE}"
 export OSSA_PURGE=false
 export OSSA_KEEP=false
-export OSSA_COPY_SOURCE=true
-export OSSA_COPY_PARTS=true
-export OSSA_COPY_CREDS=false
+export OSSA_CREDS_DETECTED=false
+export OSSA_IGNORE_CREDS=false
 export OSSA_ENCRYPT=false
 export OSSA_PW=
 export OSSA_SCAN=false
 export OSSA_SUDO=false
 export OSSA_MADISON=true
 declare -ag OSSA_ORIGINS=(Canonical Ubuntu LP-PPA-maas)
+declare -ag OSSA_COPY_ERRORS=()
+
 
 #########
 # USAGE #
@@ -53,7 +56,7 @@ ossa-full_Usage() {
     printf "\e[2GOptions:\n\n"
     printf "\e[3G -d, --dir\e[28GDirectory to store Open Source Security Assessment Data (Default: /tmp/ossa_files)\n\n"
     printf "\e[3G -s, --suffix\e[28GAppend given suffix to collected files (Default: \".$(hostname -f).$(lsb_release 2>/dev/null -cs)\"\n\n"
-    printf "\e[3G -o, --override\e[28GCopy apt list file regardless if they contain embedded credentials (Default: false)\n\n"
+    printf "\e[3G -o, --override\e[28GDo perform password scrubbing of embedded credentials (Default: false)\n\n"
     printf "\e[3G -p, --purge\e[28GPurge existing OSSA Directory (Default: False)\n\n"
     printf "\e[3G -k, --keep\e[28GKeep OSSA Directory after script completes (Default: False)\n\n"
     printf "\e[3G -e, --encrypt\e[28GEncrypt OSSA Datafiles with given passphrase (Default: False)\n\n"
@@ -82,7 +85,7 @@ while true ; do
         -e|--encrypt) export OSSA_ENCRYPT=true;export OSSA_PW="${2}";shift 2;;
         -s|--suffix) case "$2" in '') export OSSA_SUFFX="";; *) export OSSA_SUFFX="${2}";;esac;shift 2;continue;;
         -p|--purge) export OSSA_PURGE=true;shift 1;;
-        -o|--override) export OSSA_COPY_CREDS=true;shift 1;;
+        -o|--override) export OSSA_IGNORE_CREDS=true;shift 1;;
         -k|--keep) export OSSA_KEEP=true;shift 1;;
         -S|--scan) export OSSA_SCAN=true;shift 1;;
         -m|--no-madison) export OSSA_MADISON=false;shift 1;;
@@ -98,7 +101,7 @@ done
 ###################
 
 # Trap interupts and exits so we can restore the screen 
-trap 'tput sgr0; tput cnorm; tput rmcup; trap - INT TERM EXIT KILL QUIT;exit 0' INT TERM EXIT KILL QUIT
+trap 'tput sgr0; tput cnorm; tput rmcup; trap - INT TERM KILL;exit 0' INT TERM KILL
 
 # Save screen contents, clear the screen and turn off the cursor
 tput smcup;tput civis;tput clear
@@ -112,13 +115,15 @@ printf "\n\e[1G\e[1mOpen Source Security Assessment Configuration\e[0m\n"
 printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: OSSA Data will be stored in \e[38;2;0;160;200m${OSSA_DIR}\e[0m\n"
 printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Purge Existing Directory option is \e[38;2;0;160;200m${OSSA_PURGE^^}\e[0m\n"
 printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Keep OSSA Data option is \e[38;2;0;160;200m${OSSA_KEEP^^}\e[0m\n"
-printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Override Password Protection option is \e[38;2;0;160;200m${OSSA_COPY_CREDS^^}\e[0m\n"
+printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Override Password Protection option is \e[38;2;0;160;200m${OSSA_IGNORE_CREDS^^}\e[0m\n"
+[[ ${OSSA_IGNORE_CREDS} = true ]] && { printf "\e[11G\e[38;2;255;200;0mWARNING\e[0m: Data may contain embedded credentials\n"; }
+[[ ${OSSA_IGNORE_CREDS} = false ]] && { printf "\e[11G\e[1mNOTE\e[0m:Embedded credentials detected in files will be scrubbed\n"; }
 printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Archive Encryption option is \e[38;2;0;160;200m${OSSA_ENCRYPT^^}\e[0m\n"
 [[ ${OSSA_ENCRYPT} = true ]] && { printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Encryption Passphrase is \"\e[38;2;0;160;200m${OSSA_PW}\e[0m\"\n"; }
 [[ ${OSSA_ENCRYPT} = true ]] && { printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Performing cracklib-check against supplied passphrase. Result: $(cracklib-check <<< ${OSSA_PW}|awk -F': ' '{print $2}')\n"|sed 's/\ OK.*$/'$(printf "\e[38;2;0;255;0m&\e[0m")'/g;s/\ it.*$/'$(printf "\e[38;2;255;0;0m&\e[0m")'/g;s/\ it/\ It/g'; }
-# If Suffix is set, ensure that it starts with a period
+# If Suffix is set, make sure it doesn't start with a period
 if [[ -n ${OSSA_SUFFX} ]];then
-    [[ ${OSSA_SUFFX:0:1} = '.' ]] || export OSSA_SUFFX=".${OSSA_SUFFX}"
+    [[ ${OSSA_SUFFX:0:1} = '.' ]] && export OSSA_SUFFX="${OSSA_SUFFX:1}"
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: A Suffix of \"\e[38;2;0;160;200m${OSSA_SUFFX}\e[0m\" will be appended to each file collected\n"
 else
     export OSSA_SUFFX=
@@ -162,12 +167,13 @@ if [[ ${OSSA_PURGE} = true ]];then
 fi
 
 # Create OSSA Directory using a given name
-mkdir -p ${OSSA_DIR}/{apt/package-files,apt/release-files,apt/source-files,util-output,manifests,oval_data,reports}
+mkdir -p ${OSSA_DIR}/{apt/package-files,apt/release-files,apt/source-files/part-files,util-output,manifests,oval_data,reports}
 [[ -d ${OSSA_DIR} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created directory ${OSSA_DIR}\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create directory ${OSSA_DIR}\n";exit; }
 
 export PKG_DIR=${OSSA_DIR}/apt/package-files
 export REL_DIR=${OSSA_DIR}/apt/release-files
 export SRC_DIR=${OSSA_DIR}/apt/source-files
+export PARTS_DIR=${SRC_DIR}/part-files
 export UTIL_DIR=${OSSA_DIR}/util-output
 export MFST_DIR=${OSSA_DIR}/manifests
 export OVAL_DIR=${OSSA_DIR}/oval_data
@@ -181,13 +187,13 @@ export RPRT_DIR=${OSSA_DIR}/reports
 printf "\n\e[2G\e[1mGather Linux Standard Base Information (lsb_release)\e[0m\n"
 if [[ -f /etc/lsb-release ]];then
   printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Copying /etc/lsb-release to ${UTIL_DIR}/\n"
-    cp /etc/lsb-release ${UTIL_DIR}/lsb-release${OSSA_SUFFX}
-		[[ -s ${UTIL_DIR}/lsb-release${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied lsb-release information\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not copy lsb-release information\n"; }
+    cp /etc/lsb-release ${UTIL_DIR}/lsb-release.${OSSA_SUFFX}
+		[[ -s ${UTIL_DIR}/lsb-release.${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied lsb-release information\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not copy lsb-release information\n"; }
 else
     if [[ -n $(command -v lsb_release) ]];then
         printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Creating lsb-release file using $(which lsb_release)\n"
-        for i in ID RELEASE CODENAME DESCRIPTION;do echo DISTRIB_${i}=$(lsb_release -s$(echo ${i,,}|cut -c1)); done|tee 1>/dev/null ${UTIL_DIR}/lsb-release${OSSA_SUFFX}
-				[[ -s ${UTIL_DIR}/lsb-release${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied lsb-release information\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not copy lsb-release information\n"; }
+        for i in ID RELEASE CODENAME DESCRIPTION;do echo DISTRIB_${i}=$(lsb_release -s$(echo ${i,,}|cut -c1)); done|tee 1>/dev/null ${UTIL_DIR}/lsb-release.${OSSA_SUFFX}
+				[[ -s ${UTIL_DIR}/lsb-release.${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied lsb-release information\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not copy lsb-release information\n"; }
     else
         printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: lsb_release is not installed.  Skipping.\n"
     fi
@@ -202,30 +208,62 @@ printf "\n\e[2G\e[1mCreate Package Manifest Files\e[0m\n"
 
 # Create manifest file
 printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Creating manifest file\n"
-(dpkg -l|awk '/^ii/&&!/^$/{gsub(/:amd64/,"");print $2"\t"$3}'|sort -uV)|tee 1>/dev/null ${MFST_DIR}/manifest${OSSA_SUFFX}
-[[ -s ${MFST_DIR}/manifest${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created manifest file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create manifest file\n"; }
+(dpkg -l|awk '/^ii/&&!/^$/{print $2"\t"$3}'|sort -uV)|tee 1>/dev/null ${MFST_DIR}/manifest.${OSSA_SUFFX}
+[[ -s ${MFST_DIR}/manifest.${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created manifest file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create manifest file\n"; }
 
 if [[ ${OSSA_MADISON} = true ]];then
+	TZ=UTC export MADISON_NOW=$(date +%s)sec
+	[[ -f ${MFST_DIR}/madison.out.${OSSA_SUFFX} ]] && rm -f ${MFST_DIR}/madison.out.${OSSA_SUFFX}
+	touch ${MFST_DIR}/madison.out.${OSSA_SUFFX}
 	# Get madison information for manifest and show a spinner while it runs
-	((awk '{print $1}' ${MFST_DIR}/manifest${OSSA_SUFFX} |xargs -rn1 -P0 bash -c 'apt-cache madison ${0}|head -n1|awk '"'"'{print $1"|"$3"|"$6}'"'"'|xargs|tee 1>/dev/null '${MFST_DIR}'/madison.out${OSSA_SUFFX}') &)
+	((awk '{print $1}' ${MFST_DIR}/manifest.${OSSA_SUFFX} |xargs -rn1 -P0 bash -c 'apt-cache madison ${0}|head -n1|awk '"'"'{print $1"|"$3"|"$6}'"'"'|xargs|tee 1>/dev/null -a '${MFST_DIR}'/madison.out.${OSSA_SUFFX}') &)
 	SPID=$(pgrep -of 'apt-cache madison')
 	declare -ag CHARS=($(printf "\u22EE\u2003\b") $(printf "\u22F0\u2003\b") $(printf "\u22EF\u2003\b") $(printf "\u22F1\u2003\b"))
 	while kill -0 $SPID 2>/dev/null;do
 			for c in ${CHARS[@]};do printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running apt-cache madison against manifest. Please wait %s\e[K\e[0m" $c;sleep .03;done
 	done
 	sleep .5
-	[[ -f ${MFST_DIR}/madison.out${OSSA_SUFFX} ]] && { printf "\r\e[K\r\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created ${MFST_DIR}/madison.out${OSSA_SUFFX}\n"; } || { printf "\r\e[K\r\e[2G - \e[38;2;255;0;0mERROR\e[0m: Creating ${MFST_DIR}/madison.out${OSSA_SUFFX}\n"; }
+	[[ -f ${MFST_DIR}/madison.out.${OSSA_SUFFX} ]] && { printf "\r\e[K\r\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created ${MFST_DIR}/madison.out.${OSSA_SUFFX}\n"; } || { printf "\r\e[K\r\e[2G - \e[38;2;255;0;0mERROR\e[0m: Creating ${MFST_DIR}/madison.out.${OSSA_SUFFX}\n"; }
+	MADISON_TIME=$(TZ=UTC date --date now-${MADISON_NOW} "+%H:%M:%S")
+	printf "\r\e[K\r\e[5G -  apt-cache madison completed in ${MADISON_TIME}\e[0m\n\n"
+	declare -ag COMPONENTS=(main universe multiverse restricted)
+	declare -ag POCKETS=(${OSSA_RELEASE} ${OSSA_RELEASE}-updates ${OSSA_RELEASE}-security ${OSSA_RELEASE}-backports ${OSSA_RELEASE}-proposed)
+	for x in ${COMPONENTS[@]};do declare -ag ${x^^}=\(\);eval ${x^^}+=\( $(grep "/${x}" ${MFST_DIR}/madison.out.${OSSA_SUFFX}|wc -l) \);for y in ${POCKETS[@]};do eval ${x^^}+=\( ${y}:$(grep "${y}/${x}" ${MFST_DIR}/madison.out.${OSSA_SUFFX}|wc -l) \);done;done
+	export COMPONENT_TOTAL=$((${MAIN[0]##*:}+${UNIVERSE[0]##*:}+${MULTIVERSE[0]##*:}+${RESTRICTED[0]##*:}))
+	export RELEASE_TOTAL=$((${MAIN[1]##*:}+${UNIVERSE[1]##*:}+${MULTIVERSE[1]##*:}+${RESTRICTED[1]##*:}))
+	export UPDATES_TOTAL=$((${MAIN[2]##*:}+${UNIVERSE[2]##*:}+${MULTIVERSE[2]##*:}+${RESTRICTED[2]##*:}))
+	export SECURITY_TOTAL=$((${MAIN[3]##*:}+${UNIVERSE[3]##*:}+${MULTIVERSE[3]##*:}+${RESTRICTED[3]##*:}))
+	export BACKPORTS_TOTAL=$((${MAIN[4]##*:}+${UNIVERSE[4]##*:}+${MULTIVERSE[4]##*:}+${RESTRICTED[4]##*:}))
+	export PROPOSED_TOTAL=$((${MAIN[5]##*:}+${UNIVERSE[5]##*:}+${MULTIVERSE[5]##*:}+${RESTRICTED[5]##*:}))	
+	((for ((i=0; i<${#POCKETS[@]}; i++)); do printf '%s\n' ${POCKETS[i]};done|paste -sd"|"|sed 's/^/Ubuntu '${OSSA_RELEASE^}'|'${OSSA_HOST}'|/g'
+	printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[0]} ${MAIN[0]##*:} ${MAIN[1]##*:} ${MAIN[2]##*:} ${MAIN[3]##*:} ${MAIN[4]##*:} ${MAIN[5]##*:}
+	printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[1]} ${UNIVERSE[0]##*:} ${UNIVERSE[1]##*:} ${UNIVERSE[2]##*:} ${UNIVERSE[3]##*:} ${UNIVERSE[4]##*:} ${UNIVERSE[5]##*:}
+	printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[2]} ${MULTIVERSE[0]##*:} ${MULTIVERSE[1]##*:} ${MULTIVERSE[2]##*:} ${MULTIVERSE[3]##*:} ${MULTIVERSE[4]##*:} ${MULTIVERSE[5]##*:}
+	printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[3]} ${RESTRICTED[0]##*:} ${RESTRICTED[1]##*:} ${RESTRICTED[2]##*:} ${RESTRICTED[3]##*:} ${RESTRICTED[4]##*:} ${RESTRICTED[5]##*:}
+	printf '%s|%s|%s|%s|%s|%s|%s\n' Totals ${COMPONENT_TOTAL} ${RELEASE_TOTAL} ${UPDATES_TOTAL} ${SECURITY_TOTAL} ${BACKPORTS_TOTAL} ${PROPOSED_TOTAL}
+	)|column -nexts"|"|tee ${OSSA_DIR}/package_table.txt| \
+	sed -re '1s/Ubuntu '${OSSA_RELEASE^}'/'$(printf "\e[1;48;2;233;84;32m\e[1;38;2;255;255;255m")'&'$(printf "\e[0m")'/' \
+		-re '1s/'${OSSA_RELEASE}'/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/' \
+		-re '1s/'${OSSA_HOST}'/'$(printf "\e[1;48;2;255;255;255m\e[1;38;2;233;84;32m")'&'$(printf "\e[0m")'/' \
+		-re '1s/'${OSSA_RELEASE}'-updates/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/' \
+		-re '1s/'${OSSA_RELEASE}'-security/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/' \
+		-re '1s/'${OSSA_RELEASE}'-backports/'$(printf "\e[38;2;255;200;0m")'&'$(printf "\e[0m")'/g' \
+		-re '1s/'${OSSA_RELEASE}'-proposed/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g' \
+		-re 's/main|universe/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/g' \
+		-re 's/multiverse.*$|restricted.*$/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g')|sed 's/^.*$/     &/g'|tee ${OSSA_DIR}/package_table.ansi
+		printf '\n\n'
 fi
+
 
 # Create a manifest file based on packages that were expressly manually installed
 printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Creating manifest of manually installed packages\n"
-(apt 2>/dev/null list --manual-installed|awk -F"/| " '!/^$|^Listing/{print $1"\t"$3}')|tee 1>/dev/null ${MFST_DIR}/manifest.manual${OSSA_SUFFX}
-[[ -s ${MFST_DIR}/manifest.manual${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created manually-installed manifest file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create manually-installed packages manifest file\n"; }
+(apt 2>/dev/null list --manual-installed|awk -F"/| " '!/^$|^Listing/{print $1"\t"$3}')|tee 1>/dev/null ${MFST_DIR}/manifest.manual.${OSSA_SUFFX}
+[[ -s ${MFST_DIR}/manifest.manual.${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created manually-installed manifest file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create manually-installed packages manifest file\n"; }
 
 # Create a manifest file based on packages that were automatically installed (dependency, pre-req)
 printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Creating manifest of automatically installed packages\n"
-(apt 2>/dev/null list --installed|awk -F"/| " '!/^$|^Listing/&&/,automatic\]/{print $1"\t"$3}')|tee 1>/dev/null ${MFST_DIR}/manifest.automatic${OSSA_SUFFX}
-[[ -s ${MFST_DIR}/manifest.automatic${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created automatically-installed packages manifest file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create automatically-installed packages manifest file\n"; }
+(apt 2>/dev/null list --installed|awk -F"/| " '!/^$|^Listing/&&/,automatic\]/{print $1"\t"$3}')|tee 1>/dev/null ${MFST_DIR}/manifest.automatic.${OSSA_SUFFX}
+[[ -s ${MFST_DIR}/manifest.automatic.${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created automatically-installed packages manifest file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create automatically-installed packages manifest file\n"; }
 
 ######################
 # COPY PACKAGE FILES #
@@ -246,8 +284,8 @@ fi
 printf "\n\e[2G\e[1mCollect dpkg status file\e[0m\n"
 if [[ -f /var/lib/dpkg/status ]];then
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Searching for dpkg status file\n"
-    cp /var/lib/dpkg/status ${PKG_DIR}/dpkg.status${OSSA_SUFFX}
-    [[ -f ${PKG_DIR}/dpkg.status${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied dpkg status file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not copy dpkg status file\n"; }
+    cp /var/lib/dpkg/status ${PKG_DIR}/dpkg.status.${OSSA_SUFFX}
+    [[ -f ${PKG_DIR}/dpkg.status.${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied dpkg status file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not copy dpkg status file\n"; }
 else
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Could not /var/lib/dpkg/status. Skipping.\n"
 fi
@@ -269,6 +307,9 @@ fi
 # APT SOURCE FILES #
 ####################
 
+# Count repositories in use
+export OSSA_REPO_COUNT=$(apt-cache policy|awk 2>/dev/null '/500/'|wc -l)
+
 # Discover and evaluate sources.list(.d) for embedded credentials
 printf "\n\e[2G\e[1mCollect Apt Source List and Part Files\e[0m\n"
 
@@ -279,34 +320,67 @@ export SOURCES_LIST=$(apt-config dump|awk '/^Dir[ ]|^Dir::Etc[ ]|^Dir::Etc::sour
 # Check for stored password in defined sources.list file
 if [[ -s ${SOURCES_LIST} ]];then
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Checking ${SOURCES_LIST} for embedded credentials\n"
-    [[ -n $(grep -lRE 'http?(s)://[Aa-Zz-]+:[Aa-Zz0-9-]+@' ${SOURCES_LIST}) ]] && { export OSSA_COPY_SOURCE=false;printf "\e[2G - \e[38;2;255;200;0mWARNING\e[0m: ${SOURCES_LIST} appears to have credentials stored in the URIs\n"; } || { export OSSA_COPY_SOURCE=true; }
+    if [[ -n $(grep -lRE 'http?(s)://[Aa-Zz-]+:[Aa-Zz0-9-]+@' ${SOURCES_LIST}) ]];then
+    	export OSSA_CREDS_DETECTED=true
+    	printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: ${SOURCES_LIST} may have embedded credentials stored in the URIs\n"
+    else
+    	export OSSA_CREDS_DETECTED=false
+    fi
 fi
 
-# if OSSA_COPY_SOURCE has credentials in it, OSSA_COPY_SOURCE will be set to false.
-# Only using -o,--override option will allow the copy if set to true
-if [[ ${OSSA_COPY_SOURCE} = true || ${OSSA_COPY_CREDS} = true ]];then
-    # Get configured source list file and make copy of it
-    [[ -f ${SOURCES_LIST} ]] && { cp ${SOURCES_LIST} ${SRC_DIR}/sources.list${OSSA_SUFFX}; }
-    [[ -s ${SRC_DIR}/sources.list${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied sources.list file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not copy sources.list file from ${SOURCES_LIST}\n" ; }
+# if script detects that SOURCES_LIST possibly contains credentials, scrub detected strings
+# Use -o,--override option force the copy
+
+if [[ ${OSSA_CREDS_DETECTED} = true && ${OSSA_IGNORE_CREDS} = true ]];then
+	printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Copying ${SOURCES_LIST} that may contain embedded credentials but password scrubbing has been overridden! \n"
+	[[ -f ${SOURCES_LIST} ]] && { cp ${SOURCES_LIST} ${SRC_DIR}/sources.list.${OSSA_SUFFX}; }
+	[[ -f ${SRC_DIR}/sources.list.${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied ${SOURCES_LIST} to ${SRC_DIR}/sources.list.${OSSA_SUFFX}\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not copy ${SOURCES_LIST} to ${SRC_DIR}/sources.list.${OSSA_SUFFX}\n";OSSA_COPY_ERRORS+=( "${SOURCES_LIST}" ); }
 else
-    printf "\e[2G - \e[38;2;255;200;0mWARNING\e[0m: Skipping copying file ${SOURCES_LIST} due to possible embedded credentials\n\e[14GUse -o,--override option to force the copy\n\n"
+	if [[ -f ${SRC_DIR}/sources.list.${OSSA_SUFFX} ]];then
+		printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied ${SOURCES_LIST} to ${SRC_DIR}/sources.list.${OSSA_SUFFX}\n";
+		printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Scrubbing any possible embedded credentials from ${SRC_DIR}/sources.list.${OSSA_SUFFX}\n\e[14GUse -o,--override option to prevent data scrubbing.\n\n"
+		[[ -f ${SRC_DIR}/sources.list.${OSSA_SUFFX} ]] && { sed -i 's/\/\/[^@+]*@/\/\//' ${SRC_DIR}/sources.list.${OSSA_SUFFX}; }
+		if [[ -n $(grep -lRE 'http?(s)://[Aa-Zz-]+:[Aa-Zz0-9-]+@' ${SRC_DIR}/sources.list.${OSSA_SUFFX}) ]];then
+			printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Scrubbing of ${SRC_DIR}/sources.list.${OSSA_SUFFX} appears to have failed.  Removing ${SRC_DIR}/sources.list.${OSSA_SUFFX}\n"
+			rm -rf ${SRC_DIR}/sources.list.${OSSA_SUFFX}
+			OSSA_COPY_ERRORS+=( "${SOURCES_LIST}" )	
+		fi
+	else
+		printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not copy ${SOURCES_LIST} to ${SRC_DIR}/sources.list.${OSSA_SUFFX}\n"
+		OSSA_COPY_ERRORS+=( "${SOURCES_LIST}" )
+	fi
 fi
+export OSSA_CREDS_DETECTED=false
 
 # Get defined sources part list files from apt-config
 printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Deriving location of source part files from \"apt-config dump\"\n"
 export SOURCES_LIST_D=$(apt-config dump|awk '/^Dir[ ]|^Dir::Etc[ ]|^Dir::Etc::sourcep/{gsub(/"|;$/,"");print "/"$2}'|sed -r ':a;N;$! ba;s/\/\/|\n//g')
-# Check for stored password in defined sources part list files
+
+# Check for potential embedded credentials in defined sources part list files
 if [[ -n $(find ${SOURCES_LIST_D} -type f) ]];then
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Checking for embedded credentials in source parts files (${SOURCES_LIST_D}/*) \n"
-    [[ -n $(grep -lRE 'http?(s)://[Aa-Zz-]+:[Aa-Zz0-9-]+@' ${SOURCES_LIST_D}/) ]] && { export OSSA_COPY_PARTS=false;printf "\e[2G - \e[38;2;255;200;0mWARNING\e[0m: The following source part files appear to have credentials stored in the URIs: $(grep -lRE 'http?(s)://[Aa-Zz-]+:[Aa-Zz0-9-]+@' ${SOURCES_LIST_D}/)\n"; } || { export OSSA_COPY_PARTS=true; }
+    [[ -n $(grep -lRE 'http?(s)://[Aa-Zz-]+:[Aa-Zz0-9-]+@' ${SOURCES_LIST_D}/) ]] && { export OSSA_CREDS_DETECTED=true;printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Files in (${SOURCES_LIST_D} may have embedded credentials stored in the URIs\n"; } || { export OSSA_CREDS_DETECTED=false; }
 fi
 
-if [[ ${OSSA_COPY_PARTS} = true || ${OSSA_COPY_CREDS} = true ]];then
-    [[ -d ${SOURCES_LIST_D} ]] && { find ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list"|xargs -rn1 -P0 bash -c 'cp ${0} ${SRC_DIR}/${0##*/}${OSSA_SUFFX}'; }
-    [[ -n $(find ${SRC_DIR}/ -type f) ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied source parts lists from ${SOURCES_LIST_D} to ${SRC_DIR}\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not copy sources.list file from ${SOURCES_LIST} to ${SRC_DIR}\n" ; }
+# if script detects that SOURCES_LIST_D possibly contains credentials, scrub detected strings
+# Use -o,--override option force the copy
+if [[ ${OSSA_CREDS_DETECTED} = true && ${OSSA_IGNORE_CREDS} = true ]];then
+	printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Copying data from ${SOURCES_LIST_D}/ that may contain embedded credentials but password scrubbing has been overridden! \n"
+	[[ -n $(find ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list") ]] && { find ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list"|xargs -rn1 -P0 bash -c 'cp ${0} ${PARTS_DIR}/${0##*/}.${OSSA_SUFFX}'; }
+	[[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list" -o -type l -iname "*.list") ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: There was an error copying files from ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n";OSSA_COPY_ERRORS+=( "${SOURCES_LIST_D}/*" ); }
 else
-    printf "\e[2G - \e[38;2;255;200;0mWARNING\e[0m: Skipped copying files from ${SOURCES_LIST_D}/* due to possible embedded credentials\n\e[14GUse -o,--override option to force the copy\n\n"
+	printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Scrubbing any embedded credentials from ${PARTS_DIR}/*\n\e[14GUse -o,--override option to prevent data scrubbing.\n\n"
+	[[ -n $(find ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list") ]] && { find ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list"|xargs -rn1 -P0 bash -c 'cp ${0} ${PARTS_DIR}/${0##*/}.${OSSA_SUFFX}'; }
+	[[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list" -o -type l -iname "*.list") ]] && find ${PARTS_DIR}/ -type f -iname "*.list" -o -type l -iname "*.list" -exec sed -i 's/\/\/[^@+]*@/\/\//' {} \;
+	if [[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list" -o -type l -iname "*.list") ]];then
+		printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n"
+	else
+		printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: There was an error copying files from ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n"
+		OSSA_COPY_ERRORS+=( "${SOURCES_LIST_D}/*" )
+	fi
 fi
+export OSSA_CREDS_DETECTED=false
+
 
 #########################
 # UBUNTU SUPPORT STATUS #
@@ -316,8 +390,8 @@ fi
 printf "\n\e[2G\e[1mRun ubuntu-support-status\e[0m\n"
 if [[ -n $(command -v ubuntu-support-status) ]];then
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running ubuntu-support-status\n"
-    ubuntu-support-status --list|tee 1>/dev/null ${UTIL_DIR}/ubuntu-support-status${OSSA_SUFFX}
-    [[ -s ${UTIL_DIR}/ubuntu-support-status${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created ubuntu-support-status output file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create ubuntu-support-status output file\n" ; }
+    ubuntu-support-status --list|tee 1>/dev/null ${UTIL_DIR}/ubuntu-support-status.${OSSA_SUFFX}
+    [[ -s ${UTIL_DIR}/ubuntu-support-status.${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created ubuntu-support-status output file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create ubuntu-support-status output file\n" ; }
 else
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: ubuntu-support-status not installed. Skipping\n"
 fi
@@ -335,18 +409,19 @@ if [[ -f /tmp/ubuntu-security-status ]];then
 		find 2>/dev/null /var/lib/apt/lists -maxdepth 1 -regextype "posix-extended" -iregex '.*(Release$)' -exec \
 			grep -m1 -lE "$(printf '^Origin:.*%s$\n' ${OSSA_ORIGINS[@]}|paste -sd'|')" {} \;| \
 			sed 's|/var/lib/apt/lists/|http://|g;s|_dists_||g;s|_ubuntu.*$|/ubuntu/ |g'| \
-			sort -uV|sed -r '/ubuntu.com|canonical.com|launchpad.net\/maas/d' \
-			tee 1> /dev/null -a ${REL_DIR}/mirror.cfg
+			sort -uV|sed -r '/ubuntu.com|canonical.com|launchpad.net\/maas/d'|tee 1> /dev/null -a ${REL_DIR}/mirror.cfg	
 		[[ -n ${EXTRA_ORIGINS[@]} && ${#EXTRA_ORIGINS[@]} -ge 1 ]] && { printf '%s\n' ${EXTRA_ORIGINS[@]}|tee -a ${REL_DIR}/mirror.cfg; }
     sed "s|/usr/share/ubuntu-release-upgrader/mirrors.cfg|${REL_DIR}/mirror.cfg|g" -i /tmp/ubuntu-security-status
-    printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running ubuntu-security-status\n"
-    /tmp/ubuntu-security-status|sed 's/^.*$/      &/g'
+    printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running ubuntu-security-status (standard)\n\n"
+    /tmp/ubuntu-security-status|tee 1>/dev/null ${UTIL_DIR}/ubuntu-security-status.standard
+    awk '/^[0-9]/,/^$/{gsub(/^/,"     &");print}' ${UTIL_DIR}/ubuntu-security-status.standard
+    export SEC_STATUS="$(awk '/^[0-9]/,/^$/{gsub(/^/,"  &");print}' ${UTIL_DIR}/ubuntu-security-status.standard)"
     # make a more verbose report
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running ubuntu-security-status --thirdparty\n"
-    /tmp/ubuntu-security-status --thirdparty 2>&1|tee 1>/dev/null ${UTIL_DIR}/ubuntu-security-status.thirdparty${OSSA_SUFFX}
+    /tmp/ubuntu-security-status --thirdparty 2>&1|tee 1>/dev/null ${UTIL_DIR}/ubuntu-security-status.thirdparty.${OSSA_SUFFX}
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running ubuntu-security-status --unavailable\n"
-    /tmp/ubuntu-security-status --unavailable 2>&1|tee 1>/dev/null ${UTIL_DIR}/ubuntu-security-status.unavailable${OSSA_SUFFX}
-    [[ -s ${UTIL_DIR}/ubuntu-security-status.thirdparty${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created ubuntu-security-status output files\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create ubuntu-security-status output files\n" ; }
+    /tmp/ubuntu-security-status --unavailable 2>&1|tee 1>/dev/null ${UTIL_DIR}/ubuntu-security-status.unavailable.${OSSA_SUFFX}
+    [[ -s ${UTIL_DIR}/ubuntu-security-status.thirdparty.${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created ubuntu-security-status output files\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create ubuntu-security-status output files\n" ; }
     rm -f 2>/dev/null /tmp/ubuntu-security-status
 else
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: ubuntu-security-status not installed. Skipping\n"
@@ -371,10 +446,10 @@ TEST_OVAL=$(curl -slSL --connect-timeout 5 --max-time 20 --retry 5 --retry-delay
 
 [[ ${OSSA_SCAN} = true ]] && printf "\n\e[2G\e[1mPerform online CVE scan\e[0m\n"
 if [[ ${OSSA_SCAN} = true && -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) ]];then
-	[[ -f ${MFST_DIR}/manifest${OSSA_SUFFX} ]] && { printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Linking manifest to OVAL Data Directroy\n";ln -sf ${MFST_DIR}/manifest${OSSA_SUFFX} ${OVAL_DIR}/${SCAN_RELEASE}.manifest; }
+	[[ -f ${MFST_DIR}/manifest.${OSSA_SUFFX} ]] && { printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Linking manifest to OVAL Data Directroy\n";ln -sf ${MFST_DIR}/manifest.${OSSA_SUFFX} ${OVAL_DIR}/${SCAN_RELEASE}.manifest; }
 	[[ -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) && -h ${OVAL_DIR}/${SCAN_RELEASE}.manifest ]] && { printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Initiating CVE Scan using OVAL data for Ubuntu ${SCAN_RELEASE^}\n"; }
-	[[ -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) && -h ${OVAL_DIR}/${SCAN_RELEASE}.manifest ]] && { oscap oval eval --report ${RPRT_DIR}/oscap-cve-scan-report${OSSA_SUFFX}.html ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2})|awk -vF=0 -vT=0 '{if ($NF=="false") F++} {if ($NF=="true") T++} END {print "  - Common Vulnerabilities Addressed: "F"\n  - Current Vulnerability Exposure: "T}'; }
-	[[ -s ${RPRT_DIR}/oscap-cve-scan-report${OSSA_SUFFX}.html ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: OpenSCAP CVE Report is located @ ${RPRT_DIR}/oscap-cve-scan-report${OSSA_SUFFX}.html\n"; }  || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Encountered issues running OpenSCAP CVE Scan.  Report not available.\n" ; }
+	[[ -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) && -h ${OVAL_DIR}/${SCAN_RELEASE}.manifest ]] && { oscap oval eval --report ${RPRT_DIR}/oscap-cve-scan-report.${OSSA_SUFFX}.html ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2})|awk -vF=0 -vT=0 '{if ($NF=="false") F++} {if ($NF=="true") T++} END {print "  - Common Vulnerabilities Addressed: "F"\n  - Current Vulnerability Exposure: "T}'; }
+	[[ -s ${RPRT_DIR}/oscap-cve-scan-report.${OSSA_SUFFX}.html ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: OpenSCAP CVE Report is located @ ${RPRT_DIR}/oscap-cve-scan-report.${OSSA_SUFFX}.html\n"; }  || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Encountered issues running OpenSCAP CVE Scan.  Report not available.\n" ; }
 elif [[ ${TEST_OVAL:(-3)} -eq 404 ]];then
 	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Skipping CVE scan since OVAL data for Ubuntu ${SCAN_RELEASE^} is not available.\n";
 fi
@@ -385,21 +460,55 @@ fi
 
 printf "\n\e[2G\e[1mTake Snapshot of Current Processes (ps -auxwww)\e[0m\n"
 printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running ps -auxwww\n"
-ps 2>/dev/null -auxwwww|tee 1>/dev/null ${UTIL_DIR}/ps.out${OSSA_SUFFX}
-[[ -s ${UTIL_DIR}/ps.out${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created process snapshot file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create process snapshot file\n" ; }
-PS_PW_LINES=($(grep -onE '[Pp][Aa][Ss][Ss]?(w)| -P ' ${UTIL_DIR}/ps.out${OSSA_SUFFX}|awk -F: '{print $1":"$2}'))
-printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Checking for embedded credentials in ps output using a simple regex\n"
-[[ ${#PS_LINES[@]} -ge 1 ]] && { printf "\e[2G - \e[38;2;255;200;0mWARNING\e[0m: Please review following lines in ${UTIL_DIR}/ps.out${OSSA_SUFFX} for potental password data:\n$(printf '\e[14G%s\n' ${PS_LINES[@]})";echo; } || { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: The simple regex did not find password data in ps output, however\n\e[14Gyou should perform a thorough review of ${UTIL_DIR}/ps.out${OSSA_SUFFX}\n";echo; }
+ps 2>/dev/null -auxwwww|tee 1>/dev/null ${UTIL_DIR}/ps.out.${OSSA_SUFFX}
+[[ -s ${UTIL_DIR}/ps.out.${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created process snapshot file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create process snapshot file\n";OSSA_COPY_ERRORS+=( "${UTIL_DIR}/ps.out.${OSSA_SUFFX}" ); }
+declare -ag PS_PW_LINES=()
+while IFS= read PLINE;do PS_PW_LINE+=( "${PLINE}" );done < <(grep 2>/dev/null -onE '[Pp][Aa][Ss][Ss]?(w)| -P ' ${UTIL_DIR}/ps.out.${OSSA_SUFFX})
+printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Checking for embedded credentials in ${UTIL_DIR}/ps.out.${OSSA_SUFFX}\n"
+	if [[ ${#PS_PW_LINES[@]} -ge 1 ]];then
+		export OSSA_CREDS_DETECTED=true
+else
+	export OSSA_CREDS_DETECTED=false
+	PS_PW_LINES=()
+fi
+
+
+# if script detects that SOURCES_LIST_D possibly contains credentials, scrub detected strings
+# Use -o,--override option force the copy
+if [[ ${OSSA_CREDS_DETECTED} = true && ${OSSA_IGNORE_CREDS} = true ]];then
+	if [[ ${#PS_PW_LINES[@]} -ge 1 ]];then
+		printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: ${UTIL_DIR}/ps.out.${OSSA_SUFFX} may contain embedded credentials but password scrubbing has been overridden! \n"
+		printf "\e[2G - \e[38;2;255;200;0mWARNING\e[0m: Please review following lines:strings in ${UTIL_DIR}/ps.out.${OSSA_SUFFX}:\n"
+		printf '\e[14G%s\n' "${PS_PW_LINES[@]}"
+		echo
+		sleep 2
+	else
+		printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Did not detect embedded credentials in ${UTIL_DIR}/ps.out.${OSSA_SUFFX}\n"
+	fi
+else
+	if [[ ${#PS_PW_LINES[@]} -ge 1 ]];then
+		printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Scrubbing potential embedded credentials from ${PARTS_DIR}/*\n\e[14GUse -o,--override option to prevent data scrubbing.\n\n"
+		for i in "${PS_PW_LINE[@]}";do
+			printf "Deleting ${i##*:} from line ${i%%:*} in ${UTIL_DIR}/ps.out.${OSSA_SUFFX}\n"
+			sed -ir 's,'"${i##*:}"',,g' ${UTIL_DIR}/ps.out.${OSSA_SUFFX}
+		done
+		echo
+	else
+		printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Did not detect embedded credentials in ${UTIL_DIR}/ps.out.${OSSA_SUFFX}\n"
+	fi
+fi
+export OSSA_CREDS_DETECTED=false
 
 ####################
 # NETSTAT SNAPSHOT #
 ####################
+
 printf "\n\e[2G\e[1mTake Snapshot of Network Statistics (netstat -an)\e[0m\n"
 if [[ -n $(command -v netstat) ]];then NETSTAT=$(command -v netstat);elif [[ -n $(command -v ss) ]];then NETSTAT=$(command -v ss);else NETSTAT="";fi
 if [[ -n ${NETSTAT} ]];then
 	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running netstat -an\n"
-	[[ -n ${SCMD} ]] && { ${SCMD} ${NETSTAT} 2>/dev/null -anp|tee 1>/dev/null ${UTIL_DIR}/netstat.out${OSSA_SUFFX}; } || {  ${NETSTAT} 2>/dev/null -an|tee 1>/dev/null ${UTIL_DIR}/netstat.out${OSSA_SUFFX}; }
-	[[ -s ${UTIL_DIR}/netstat.out${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created netstat snapshot file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create netstat snapshot file\n" ; }
+	[[ -n ${SCMD} ]] && { ${SCMD} ${NETSTAT} 2>/dev/null -anp|tee 1>/dev/null ${UTIL_DIR}/netstat.out.${OSSA_SUFFX}; } || {  ${NETSTAT} 2>/dev/null -an|tee 1>/dev/null ${UTIL_DIR}/netstat.out.${OSSA_SUFFX}; }
+	[[ -s ${UTIL_DIR}/netstat.out.${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created netstat snapshot file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create netstat snapshot file\n" ; }
 else
 	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Neither \"netstat\" or \"ss\" are installed. Skipping\n"
 fi
@@ -411,18 +520,25 @@ fi
 printf "\n\e[2G\e[1mList open files (lsof)\e[0m\n"
 if [[ $(command -v lsof) ]];then
 	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running lsof\n"
-	${SCMD} lsof -i 2>/dev/null|tee 1>/dev/null ${UTIL_DIR}/lsof.out${OSSA_SUFFX};
-	[[ -s ${UTIL_DIR}/lsof.out${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created lsof snapshot file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create lsof snapshot file\n" ; }
+	${SCMD} lsof -i 2>/dev/null|tee 1>/dev/null ${UTIL_DIR}/lsof.out.${OSSA_SUFFX};
+	[[ -s ${UTIL_DIR}/lsof.out.${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created lsof snapshot file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create lsof snapshot file\n" ; }
 else
 	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: lsof not installed. Skipping\n"
 fi
+
+
+##################################
+# PRINT COPY_ERRORS ARRAY TO LOG #
+##################################
+
+[[ ${#OSSA_COPY_ERRORS[@]} -ge 1 ]] && { touch ${OSSA_DIR}/copy.err.log;printf '%s\n' "${OSSA_COPY_ERRORS[@]}"|tee -a 1>/dev/null ${OSSA_DIR}/copy.err.log; }
 
 ##################
 # Create Tarball #
 ##################
 
 printf "\n\e[2G\e[1mArchiving and Compressing Collected Data\e[0m\n"
-[[ -n ${OSSA_PW} ]] && { export TARBALL=/tmp/ossa-datafile.encrypted${OSSA_SUFFX}.tgz; } || { export TARBALL=/tmp/ossa-datafile${OSSA_SUFFX}.tgz; }
+[[ -n ${OSSA_PW} ]] && { export TARBALL=/tmp/ossa-datafile.encrypted.${OSSA_SUFFX}.tgz; } || { export TARBALL=/tmp/ossa-datafile.${OSSA_SUFFX}.tgz; }
 if [[ -n ${OSSA_PW} ]];then
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Encrypting OSSA data files using openssl\n"
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Password is \"${OSSA_PW}\"\n"
@@ -452,12 +568,37 @@ fi
 #################
 # END OF SCRIPT #
 #################
+
 OSSA_TIME=$(TZ=UTC date --date now-${NOW} "+%H:%M:%S")
 echo
-read -t 20 -p "Hit ENTER or wait 20 seconds to clear OSSA data from the screen"
+
+# Display countdown message so user understands screen will be cleared
+i=19;until [[ -n ${INPUT} || $i = 0 ]];do [[ $i -eq 1 ]] && W= || W=s;printf 1>&2 "\r\e[2G\e[1mHit ENTER or wait \e[1;33m${i} \e[0m\e[1msecond${W} to clear OSSA data from the screen\e[0m\e[K";read -s -t 1 -N 1 INPUT;let i=$i-1;printf "\e[K\r\e[K";done
 tput sgr0; tput cnorm; tput rmcup
 
 # Show elapsed time
-printf "\n\e[2G\e[1mOpen Source Security Assessment completed in ${OSSA_TIME}\e[0m\n"
+printf "\n\e[2G\e[1mOpen Source Security Assessment completed in ${OSSA_TIME}\e[0m\n\n"
+
+# Show Package Breakdown
+(for ((i=0; i<${#POCKETS[@]}; i++)); do printf '%s\n' ${POCKETS[i]};done|paste -sd"|"|sed 's/^/Ubuntu '${OSSA_RELEASE^}'|Totals|/g'
+printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[0]} ${MAIN[0]##*:} ${MAIN[1]##*:} ${MAIN[2]##*:} ${MAIN[3]##*:} ${MAIN[4]##*:} ${MAIN[5]##*:}
+printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[1]} ${UNIVERSE[0]##*:} ${UNIVERSE[1]##*:} ${UNIVERSE[2]##*:} ${UNIVERSE[3]##*:} ${UNIVERSE[4]##*:} ${UNIVERSE[5]##*:}
+printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[2]} ${MULTIVERSE[0]##*:} ${MULTIVERSE[1]##*:} ${MULTIVERSE[2]##*:} ${MULTIVERSE[3]##*:} ${MULTIVERSE[4]##*:} ${MULTIVERSE[5]##*:}
+printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[3]} ${RESTRICTED[0]##*:} ${RESTRICTED[1]##*:} ${RESTRICTED[2]##*:} ${RESTRICTED[3]##*:} ${RESTRICTED[4]##*:} ${RESTRICTED[5]##*:}
+)|column -nexts"|"| \
+sed -re '1s/Ubuntu '${OSSA_RELEASE^}'/'$(printf "\e[1;48;2;233;84;32m\e[1;38;2;255;255;255m")'&'$(printf "\e[0m")'/' \
+	-re '1s/focal/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/' \
+	-re '1s/Totals/'$(printf "\e[38;2;255;255;255m")'&'$(printf "\e[0m")'/' \
+	-re '1s/focal-updates/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/' \
+	-re '1s/focal-security/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/' \
+	-re '1s/focal-backports/'$(printf "\e[38;2;255;200;0m")'&'$(printf "\e[0m")'/g' \
+	-re '1s/focal-proposed/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g' \
+	-re 's/main|universe/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/g' \
+	-re 's/multiverse.*$|restricted.*$/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g'|sed 's/^.*$/ &/g'
+echo
+
+#show security status
+echo "${SEC_STATUS}"
+
 # Show tarball location
-[[ -n ${OSSA_PW} ]] && { printf "\e[2GEncrypted data collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; } || { printf "\e[2GData collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; }
+[[ -n ${OSSA_PW} ]] && { printf "\n\e[2GEncrypted data collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; } || { printf "\e[2GData collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; }
