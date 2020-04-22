@@ -49,8 +49,8 @@ OpenSCAP CVE scan report is located @ /home/ubuntu/bionic.report.htm
 
 * b=bionic, e=eoan, f=focal, t=trusty, x=xenial
 * single digit prefixes are daily builds
-* [a-z]-ga are release build
-* [a-z]-min are minimal builds
+* [a-z]-ga prefixes are release build
+* [a-z]-min prefixes are minimal builds
 	* ./sample-manifests/b.manifest
 	* ./sample-manifests/b-ga.manifest
 	* ./sample-manifests/b-min.manifest
