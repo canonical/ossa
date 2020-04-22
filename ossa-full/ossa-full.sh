@@ -68,9 +68,9 @@ ossa-full_Usage() {
     printf "\e[4GChange location of collected data:\n"
     printf "\e[6G./${FUNCNAME%%_*}.sh -d \$HOME/ossa_files\n"
     printf "\n\e[4GSet custom file suffix:\n"
-    printf "\e[6G./${FUNCNAME%%_*}.sh -s \$(hostname -f).\$(lsb_release 2>/dev/null -sr)\n"
-    printf "\n\e[4GPurge existing/leftover directory, perform CVE Scan, encrypt compressed archive of collected data, and\n\e[6Gkeep data directory after run\n\n"
-    printf '\e[6G./'${FUNCNAME%%_*}'.sh -pSke '"'"'MyP@ssW0rd!'"'"' \n\n'
+    printf "\e[6G./${FUNCNAME%%_*}.sh -s dc1.psql001.xenial\n"
+    printf "\n\e[4GPerform CVE Scan, encrypt compressed archive of collected data, and\n\e[6Gkeep data directory after run\n\n"
+    printf '\e[6G./'${FUNCNAME%%_*}'.sh -Ske '"'"'MyP@ssW0rd!'"'"' \n\n'
 };export -f ossa-full_Usage
 
 ################
