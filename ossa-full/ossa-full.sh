@@ -616,7 +616,7 @@ fi
 
 #show security status
 [[ -n ${SEC_STATUS} ]] && { echo "${SEC_STATUS}"|sed 's/^.*$/ &/g'; }
-[[ -s ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} ]] && { cat ubuntu-security-status.standard |awk '/^En|so far|^$|Advan/'|sed 1,2d; }
+[[ -s ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} ]] && { cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} |awk '/^En|so far|^$|Advan/'|sed 1,2d; }
 
 # Show tarball location
 [[ -n ${OSSA_PW} ]] && { printf "\n\e[2GEncrypted data collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; } || { printf "\e[2GData collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; }
