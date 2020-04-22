@@ -10,7 +10,7 @@ This script accepts a package manifest as an argument and then performs an OpenS
 	* One less option for users to enter
 * regex used should work through Ubuntu 29.10
 * Trusty's version of update-manager-core doesn't match the release
-	* It is consistently "196"
+	* But it IS consistent @ "196" 
 * Release specific OVAL data is verified to exist before downloading
 	* Aborts for missing (404) and network/timeout issues
 * Manifest and OVAL data Must be same directory
