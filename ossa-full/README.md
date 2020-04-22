@@ -91,7 +91,7 @@ is located. Once in ossa/ossa-full you can:
 	```
 
 ### Transfer Results to your machine
-Once ossa-full.sh has completed, you will most likely need to send to the file to the team performing the assessment.
+Once ossa-full.sh has completed, you may want to collect the data from the machine.
 * The name and path of the archive will be presented once the script has completed:
 
 	```
