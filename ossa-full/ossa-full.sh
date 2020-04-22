@@ -42,6 +42,7 @@ export OSSA_PW=
 export OSSA_SCAN=false
 export OSSA_SUDO=false
 export OSSA_MADISON=true
+export OSSA_DEBUG=false
 declare -ag OSSA_ORIGINS=(Canonical Ubuntu LP-PPA-maas)
 declare -ag OSSA_COPY_ERRORS=()
 
@@ -63,6 +64,7 @@ ossa-full_Usage() {
     printf "\e[3G -m, --no-madison\e[28GDo not run apt-cache madison against package manifest (Default: False)\n\n"
     printf "\e[3G -O, --origins\e[28GIf you are running a mirror of an official ubuntu repository,\n\e[28Gadd the URL(s) to they can be marked as official\n\n\e[28GNote: Format should be a single URL or a space/comma\n\e[34Gseparated list, surrounded by quotes\n\n"
     printf "\e[3G -S, --scan\e[28GInstall OpenSCAP & scan manifest for CVEs. Sudo access is required only\n\e[28Gif OpenSCAP is not installed. (Default: False)\n\n"
+    printf "\e[3G -D, --debug\e[28GEnable set -x\n\n"
     printf "\e[3G -h, --help\e[28GThis message\n\n"
     printf "\e[2GExamples:\n\n"
     printf "\e[4GChange location of collected data:\n"
@@ -77,7 +79,7 @@ ossa-full_Usage() {
 # ARGS/OPTIONS #
 ################
 
-ARGS=$(getopt -o s::d:e:O:Snomkh --long suffix::,dir:,encrypt:,origins:,scan,no-purge,override,keep,no-madison,help -n ${PROG} -- "$@")
+ARGS=$(getopt -o s::d:e:O:SnomkDh --long suffix::,dir:,encrypt:,origins:,scan,no-purge,override,keep,no-madison,help,debug -n ${PROG} -- "$@")
 eval set -- "$ARGS"
 while true ; do
     case "$1" in
@@ -90,6 +92,7 @@ while true ; do
         -S|--scan) export OSSA_SCAN=true;shift 1;;
         -m|--no-madison) export OSSA_MADISON=false;shift 1;;
         -O|--origins) declare -ag EXTRA_ORIGINS=($(printf "${2//[,| ]/\\n}\n"));shift 2;;
+        -D|--debug) export OSSA_DEBUG=true;shift 1;;
         -h|--help) ossa-full_Usage;exit 2;;
         --) shift;break;;
     esac
@@ -100,11 +103,13 @@ done
 # START OF SCRIPT #
 ###################
 
+[[ ${OSSA_DEBUG} = true ]] && { set -x; }
+
 # Trap interupts and exits so we can restore the screen 
-trap 'tput sgr0; tput cnorm; tput rmcup; trap - INT TERM KILL;exit 0' INT TERM KILL
+[[ ${OSSA_DEBUG} = true ]] || { trap 'tput sgr0; tput cnorm; tput rmcup; trap - INT TERM KILL;exit 0' INT TERM KILL; }
 
 # Save screen contents, clear the screen and turn off the cursor
-tput smcup;tput civis;tput clear
+[[ ${OSSA_DEBUG} = true ]] || { tput smcup;tput civis;tput clear; }
 
 ############################
 # DISPLAY SELECTED OPTIONS #
@@ -449,7 +454,9 @@ TEST_OVAL=$(curl -slSL --connect-timeout 5 --max-time 20 --retry 5 --retry-delay
 if [[ ${OSSA_SCAN} = true && -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) ]];then
 	[[ -f ${MFST_DIR}/manifest.${OSSA_SUFFX} ]] && { printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Linking manifest to OVAL Data Directroy\n";ln -sf ${MFST_DIR}/manifest.${OSSA_SUFFX} ${OVAL_DIR}/${SCAN_RELEASE}.manifest; }
 	[[ -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) && -h ${OVAL_DIR}/${SCAN_RELEASE}.manifest ]] && { printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Initiating CVE Scan using OVAL data for Ubuntu ${SCAN_RELEASE^}\n"; }
-	[[ -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) && -h ${OVAL_DIR}/${SCAN_RELEASE}.manifest ]] && { oscap oval eval --report ${RPRT_DIR}/oscap-cve-scan-report.${OSSA_SUFFX}.html ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2})|awk -vF=0 -vT=0 '{if ($NF=="false") F++} {if ($NF=="true") T++} END {print "CVE Scan Results (Summary)\nCommon Vulnerabilities Addressed: "F"\nCurrent Vulnerability Exposure: "T}'|tee ${UTIL_DIR}/cve-stats.${OSSA_SUFFX}|sed 's/^.*$/   &/g'; }
+	echo
+	[[ -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) && -h ${OVAL_DIR}/${SCAN_RELEASE}.manifest ]] && { oscap oval eval --report ${RPRT_DIR}/oscap-cve-scan-report.${OSSA_SUFFX}.html ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2})|awk -vF=0 -vT=0 '{if ($NF=="false") F++} {if ($NF=="true") T++} END {print "CVE Scan Results (Summary)\nCommon Vulnerabilities Addressed: "F"\nCurrent Vulnerability Exposure: "T}'|tee ${UTIL_DIR}/cve-stats.${OSSA_SUFFX}|sed 's/^.*$/     &/g'; }
+	echo
 	[[ -s ${RPRT_DIR}/oscap-cve-scan-report.${OSSA_SUFFX}.html ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: OpenSCAP CVE Report is located @ ${RPRT_DIR}/oscap-cve-scan-report.${OSSA_SUFFX}.html\n"; }  || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Encountered issues running OpenSCAP CVE Scan.  Report not available.\n" ; }
 	[[ -s ${UTIL_DIR}/cve-stats.${OSSA_SUFFX} ]] && { export CVE_STATUS="$(cat ${UTIL_DIR}/cve-stats.${OSSA_SUFFX})"; }
 elif [[ ${TEST_OVAL:(-3)} -eq 404 ]];then
@@ -576,7 +583,7 @@ echo
 
 # Display countdown message so user understands screen will be cleared
 i=19;until [[ -n ${INPUT} || $i = 0 ]];do [[ $i -eq 1 ]] && W= || W=s;printf 1>&2 "\r\e[2G\e[1mHit ENTER or wait \e[1;33m${i} \e[0m\e[1msecond${W} to clear OSSA data from the screen\e[0m\e[K";read -s -t 1 -N 1 INPUT;let i=$i-1;printf "\e[K\r\e[K";done
-tput sgr0; tput cnorm; tput rmcup
+[[ ${OSSA_DEBUG} = true ]] || { tput sgr0; tput cnorm; tput rmcup; }
 
 # Show elapsed time
 printf "\n\e[2G\e[1mOpen Source Security Assessment completed in ${OSSA_TIME}\e[0m\n\n"
@@ -621,3 +628,5 @@ echo
 
 # Show tarball location
 [[ -n ${OSSA_PW} ]] && { printf "\n\e[2GEncrypted data collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; } || { printf "\e[2GData collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; }
+
+[[ ${OSSA_DEBUG} = true ]] && { set +x; }
