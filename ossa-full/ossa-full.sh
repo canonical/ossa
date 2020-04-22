@@ -436,7 +436,7 @@ fi
 export SCAN_RELEASE=$(lsb_release -sc)
 OVAL_URI="https://people.canonical.com/~ubuntu-security/oval/oci.com.ubuntu.${SCAN_RELEASE}.cve.oval.xml.bz2"
 TEST_OVAL=$(curl -slSL --connect-timeout 5 --max-time 20 --retry 5 --retry-delay 1 -w %{http_code} -o /dev/null ${OVAL_URI} 2>&1)
-[[ ${TEST_OVAL:(-3)} -eq 200 ]] && { printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Downloading OVAL data for Ubuntu ${SCAN_RELEASE^}\n";wget --show-progress --progress=bar:noscroll --no-dns-cache -qO- ${OVAL_URI}|bunzip2 -d|tee 1>/dev/null ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}); }
+[[ ${TEST_OVAL:(-3)} -eq 200 ]] && { printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Downloading OVAL data for Ubuntu ${SCAN_RELEASE^}\n";curl -slSL --connect-timeout 5 --max-time 20 --retry 5 --retry-delay 1 ${OVAL_URI} -o- |bunzip2 -d|tee 1>/dev/null ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}); }
 [[ ${TEST_OVAL:(-3)} -eq 404 ]] && { printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: OVAL data file for Ubuntu ${SCAN_RELEASE^} is not available. Skipping download.\n"; }
 [[ ${TEST_OVAL:(-3)} -eq 200 && -s ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied OVAL data for for Ubuntu ${SCAN_RELEASE^} to ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2})\n"; }
 
