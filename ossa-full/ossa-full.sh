@@ -417,7 +417,6 @@ if [[ -f /tmp/ubuntu-security-status ]];then
     /tmp/ubuntu-security-status|tee 1>/dev/null ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX}
     cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX}|awk '/^[0-9]/,/^$/{gsub(/^/,"     &",$0);print}'
     export SEC_STATUS="$(cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX}|awk '/^[0-9]/,/^$/{gsub(/^/," &",$0);print}')"
-    echo
     # make a more verbose report
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running ubuntu-security-status --thirdparty\n"
     /tmp/ubuntu-security-status --thirdparty 2>&1|tee 1>/dev/null ${UTIL_DIR}/ubuntu-security-status.thirdparty.${OSSA_SUFFX}
@@ -610,12 +609,13 @@ if [[ ${OSSA_MADISON} = true ]];then
 		-re 's/main|universe/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/g' \
 		-re 's/multiverse.*$|restricted.*$/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g')|sed 's/^.*$/ &/g'
 fi
-
+echo
 #show security status
 [[ -n ${SEC_STATUS} ]] && { echo "${SEC_STATUS}"; }
-[[ -s ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} ]] && { cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} |awk '/^En|so far|^$|Advan/'; }
+[[ -s ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} ]] && { cat ${UTIL_DIR}/ubuntu-security-status.standard.${OSSA_SUFFX} |awk '/^En|so far|^$|Advan/{gsub(/^.*$/," &");print}'; }
 
 #show cve stats
+echo
 [[ -n ${CVE_STATUS} ]] && { echo "${CVE_STATUS}"|sed 's/^.*$/ &/g'; }
 echo
 
