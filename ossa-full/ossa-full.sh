@@ -200,18 +200,18 @@ fi
 # Create a variety of manifest files
 printf "\n\e[2G\e[1mCreate Package Manifest Files\e[0m\n"
 
-# Create manifest manifest file
-printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Creating manifest manifest file\n"
-(dpkg -l|awk '/^ii/&&!/^$/{gsub(/:amd64/,"");print $2"\t"$3}'|sort -uV)|tee 1>/dev/null ${MFST_DIR}/manifest.manifest${OSSA_SUFFX}
-[[ -s ${MFST_DIR}/manifest.manifest${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created manifest manifest file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create manifest manifest file\n"; }
+# Create manifest file
+printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Creating manifest file\n"
+(dpkg -l|awk '/^ii/&&!/^$/{gsub(/:amd64/,"");print $2"\t"$3}'|sort -uV)|tee 1>/dev/null ${MFST_DIR}/manifest${OSSA_SUFFX}
+[[ -s ${MFST_DIR}/manifest${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created manifest file\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not create manifest file\n"; }
 
 if [[ ${OSSA_MADISON} = true ]];then
-	# Get madison information for manifest manifest and show a spinner while it runs
-	((awk '{print $1}' ${MFST_DIR}/manifest.manifest${OSSA_SUFFX} |xargs -rn1 -P0 bash -c 'apt-cache madison ${0}|head -n1|awk '"'"'{print $1"|"$3"|"$6}'"'"'|xargs|tee 1>/dev/null ${MFST_DIR}/madison.out${OSSA_SUFFX}') &)
+	# Get madison information for manifest and show a spinner while it runs
+	((awk '{print $1}' ${MFST_DIR}/manifest${OSSA_SUFFX} |xargs -rn1 -P0 bash -c 'apt-cache madison ${0}|head -n1|awk '"'"'{print $1"|"$3"|"$6}'"'"'|xargs|tee 1>/dev/null '${MFST_DIR}'/madison.out${OSSA_SUFFX}') &)
 	SPID=$(pgrep -of 'apt-cache madison')
 	declare -ag CHARS=($(printf "\u22EE\u2003\b") $(printf "\u22F0\u2003\b") $(printf "\u22EF\u2003\b") $(printf "\u22F1\u2003\b"))
 	while kill -0 $SPID 2>/dev/null;do
-			for c in ${CHARS[@]};do printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Gathering apt-cache \"madison\" information for manifest manifest. Please wait  %s\e[K\e[0m" $c;sleep .03;done
+			for c in ${CHARS[@]};do printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running apt-cache madison against manifest. Please wait %s\e[K\e[0m" $c;sleep .03;done
 	done
 	sleep .5
 	[[ -f ${MFST_DIR}/madison.out${OSSA_SUFFX} ]] && { printf "\r\e[K\r\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created ${MFST_DIR}/madison.out${OSSA_SUFFX}\n"; } || { printf "\r\e[K\r\e[2G - \e[38;2;255;0;0mERROR\e[0m: Creating ${MFST_DIR}/madison.out${OSSA_SUFFX}\n"; }
@@ -335,7 +335,7 @@ if [[ -f /tmp/ubuntu-security-status ]];then
 		find 2>/dev/null /var/lib/apt/lists -maxdepth 1 -regextype "posix-extended" -iregex '.*(Release$)' -exec \
 			grep -m1 -lE "$(printf '^Origin:.*%s$\n' ${OSSA_ORIGINS[@]}|paste -sd'|')" {} \;| \
 			sed 's|/var/lib/apt/lists/|http://|g;s|_dists_||g;s|_ubuntu.*$|/ubuntu/ |g'| \
-			sort -uV| \
+			sort -uV|sed -r '/ubuntu.com|canonical.com|launchpad.net\/maas/d' \
 			tee 1> /dev/null -a ${REL_DIR}/mirror.cfg
 		[[ -n ${EXTRA_ORIGINS[@]} && ${#EXTRA_ORIGINS[@]} -ge 1 ]] && { printf '%s\n' ${EXTRA_ORIGINS[@]}|tee -a ${REL_DIR}/mirror.cfg; }
     sed "s|/usr/share/ubuntu-release-upgrader/mirrors.cfg|${REL_DIR}/mirror.cfg|g" -i /tmp/ubuntu-security-status
@@ -371,7 +371,7 @@ TEST_OVAL=$(curl -slSL --connect-timeout 5 --max-time 20 --retry 5 --retry-delay
 
 [[ ${OSSA_SCAN} = true ]] && printf "\n\e[2G\e[1mPerform online CVE scan\e[0m\n"
 if [[ ${OSSA_SCAN} = true && -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) ]];then
-	[[ -f ${MFST_DIR}/manifest.manifest${OSSA_SUFFX} ]] && { printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Linking manifest manifest to OVAL Data Directroy\n";ln -sf ${MFST_DIR}/manifest.manifest${OSSA_SUFFX} ${OVAL_DIR}/${SCAN_RELEASE}.manifest; }
+	[[ -f ${MFST_DIR}/manifest${OSSA_SUFFX} ]] && { printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Linking manifest to OVAL Data Directroy\n";ln -sf ${MFST_DIR}/manifest${OSSA_SUFFX} ${OVAL_DIR}/${SCAN_RELEASE}.manifest; }
 	[[ -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) && -h ${OVAL_DIR}/${SCAN_RELEASE}.manifest ]] && { printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Initiating CVE Scan using OVAL data for Ubuntu ${SCAN_RELEASE^}\n"; }
 	[[ -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) && -h ${OVAL_DIR}/${SCAN_RELEASE}.manifest ]] && { oscap oval eval --report ${RPRT_DIR}/oscap-cve-scan-report${OSSA_SUFFX}.html ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2})|awk -vF=0 -vT=0 '{if ($NF=="false") F++} {if ($NF=="true") T++} END {print "  - Common Vulnerabilities Addressed: "F"\n  - Current Vulnerability Exposure: "T}'; }
 	[[ -s ${RPRT_DIR}/oscap-cve-scan-report${OSSA_SUFFX}.html ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: OpenSCAP CVE Report is located @ ${RPRT_DIR}/oscap-cve-scan-report${OSSA_SUFFX}.html\n"; }  || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Encountered issues running OpenSCAP CVE Scan.  Report not available.\n" ; }
