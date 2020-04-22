@@ -458,6 +458,6 @@ read -t 20 -p "Hit ENTER or wait 20 seconds to clear OSSA data from the screen"
 tput sgr0; tput cnorm; tput rmcup
 
 # Show elapsed time
-printf "\e[2G\e[1mOpen Source Security Assessment completed in ${OSSA_TIME}\e[0m\n\n"
+printf "\n\e[2G\e[1mOpen Source Security Assessment completed in ${OSSA_TIME}\e[0m\n"
 # Show tarball location
-[[ -n ${OSSA_PW} ]] && { printf "\e[2GEncrypted data collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; } || { printf "\n\n\e[2GData collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; }
+[[ -n ${OSSA_PW} ]] && { printf "\e[2GEncrypted data collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; } || { printf "\e[2GData collected during the Open Source Security Assessment is located at\n\e[2G${TARBALL}\e[0m\n\n"; }
