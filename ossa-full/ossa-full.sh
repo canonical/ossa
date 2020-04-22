@@ -358,26 +358,26 @@ printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Deriving location of source part fi
 export SOURCES_LIST_D=$(apt-config dump|awk '/^Dir[ ]|^Dir::Etc[ ]|^Dir::Etc::sourcep/{gsub(/"|;$/,"");print "/"$2}'|sed -r ':a;N;$! ba;s/\/\/|\n//g')
 
 # Check for potential embedded credentials in defined sources part list files
-if [[ -n $(find ${SOURCES_LIST_D} -type f) ]];then
+if [[ -n $(find 2>/dev/null ${SOURCES_LIST_D} -type f) ]];then
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Checking for embedded credentials in source parts files (${SOURCES_LIST_D}/*) \n"
     [[ -n $(grep -lRE 'http?(s)://[Aa-Zz-]+:[Aa-Zz0-9-]+@' ${SOURCES_LIST_D}/) ]] && { export OSSA_CREDS_DETECTED=true;printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Files in (${SOURCES_LIST_D} may have embedded credentials stored in the URIs\n"; } || { export OSSA_CREDS_DETECTED=false; }
-fi
 
-# if script detects that SOURCES_LIST_D possibly contains credentials, scrub detected strings
-# Use -o,--override option force the copy
-if [[ ${OSSA_CREDS_DETECTED} = true && ${OSSA_IGNORE_CREDS} = true ]];then
-	printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Copying data from ${SOURCES_LIST_D}/ that may contain embedded credentials but password scrubbing has been overridden! \n"
-	[[ -n $(find ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list") ]] && { find ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list"|xargs -rn1 -P0 bash -c 'cp ${0} ${PARTS_DIR}/${0##*/}.${OSSA_SUFFX}'; }
-	[[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list.*" -o -type l -iname "*.list.*") ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: There was an error copying files from ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n";OSSA_COPY_ERRORS+=( "${SOURCES_LIST_D}/*" ); }
-else
-	printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Scrubbing any embedded credentials from ${PARTS_DIR}/*\n\e[12GUse -o,--override option to prevent data scrubbing.\n\n"
-	[[ -n $(find ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list") ]] && { find ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list"|xargs -rn1 -P0 bash -c 'cp ${0} ${PARTS_DIR}/${0##*/}.${OSSA_SUFFX}'; }
-	[[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list.*" -o -type l -iname "*.list.*") ]] && find ${PARTS_DIR}/ -type f -iname "*.list.*" -o -type l -iname "*.list.*" -exec sed -i 's/\/\/[^@+]*@/\/\//' {} \;
-	if [[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list.*" -o -type l -iname "*.list.*") ]];then
-		printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n"
+	# if script detects that SOURCES_LIST_D possibly contains credentials, scrub detected strings
+	# Use -o,--override option force the copy
+	if [[ ${OSSA_CREDS_DETECTED} = true && ${OSSA_IGNORE_CREDS} = true ]];then
+		printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Copying data from ${SOURCES_LIST_D}/ that may contain embedded credentials but password scrubbing has been overridden! \n"
+		[[ -n $(find 2>/dev/null ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list") ]] && { find 2>/dev/null ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list"|xargs -rn1 -P0 bash -c 'cp ${0} ${PARTS_DIR}/${0##*/}.${OSSA_SUFFX}'; }
+		[[ -n $(find 2>/dev/null ${PARTS_DIR}/ -type f -iname "*.list.*" -o -type l -iname "*.list.*") ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: There was an error copying files from ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n";OSSA_COPY_ERRORS+=( "${SOURCES_LIST_D}/*" ); }
 	else
-		printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: There was an error copying files from ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n"
-		OSSA_COPY_ERRORS+=( "${SOURCES_LIST_D}/*" )
+		printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Scrubbing any embedded credentials from ${PARTS_DIR}/*\n\e[12GUse -o,--override option to prevent data scrubbing.\n\n"
+		[[ -n $(find 2>/dev/null ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list") ]] && { find 2>/dev/null ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list"|xargs -rn1 -P0 bash -c 'cp ${0} ${PARTS_DIR}/${0##*/}.${OSSA_SUFFX}'; }
+		[[ -n $(find 2>/dev/null ${PARTS_DIR}/ -type f -iname "*.list.*" -o -type l -iname "*.list.*") ]] && find 2>/dev/null ${PARTS_DIR}/ -type f -iname "*.list.*" -o -type l -iname "*.list.*" -exec sed -i 's/\/\/[^@+]*@/\/\//' {} \;
+		if [[ -n $(find 2>/dev/null ${PARTS_DIR}/ -type f -iname "*.list.*" -o -type l -iname "*.list.*") ]];then
+			printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n"
+		else
+			printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: There was an error copying files from ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n"
+			OSSA_COPY_ERRORS+=( "${SOURCES_LIST_D}/*" )
+		fi
 	fi
 fi
 export OSSA_CREDS_DETECTED=false
@@ -415,8 +415,8 @@ if [[ -f /tmp/ubuntu-security-status ]];then
     sed "s|/usr/share/ubuntu-release-upgrader/mirrors.cfg|${REL_DIR}/mirror.cfg|g" -i /tmp/ubuntu-security-status
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running ubuntu-security-status (standard)\n\n"
     /tmp/ubuntu-security-status|tee 1>/dev/null ${UTIL_DIR}/ubuntu-security-status.standard
-    awk '/^[0-9]/,/^$/{gsub(/^/,"     &");print}' ${UTIL_DIR}/ubuntu-security-status.standard
-    export SEC_STATUS="$(awk '/^[0-9]/,/^$/{gsub(/^/,"  &");print}' ${UTIL_DIR}/ubuntu-security-status.standard)"
+    cat ${UTIL_DIR}/ubuntu-security-status.standard|sed 's|^.*$|     &|g'
+    export SEC_STATUS="cat ${UTIL_DIR}/ubuntu-security-status.standard"
     # make a more verbose report
     printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running ubuntu-security-status --thirdparty\n"
     /tmp/ubuntu-security-status --thirdparty 2>&1|tee 1>/dev/null ${UTIL_DIR}/ubuntu-security-status.thirdparty.${OSSA_SUFFX}
