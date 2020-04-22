@@ -33,7 +33,7 @@ export OSSA_DIR='/tmp/ossa_files'
 export OSSA_HOST=$(hostname -s)
 export OSSA_RELEASE="$(lsb_release 2>/dev/null -sc)"
 export OSSA_SUFFX="${OSSA_HOST}.${OSSA_RELEASE}"
-export OSSA_PURGE=false
+export OSSA_PURGE=true
 export OSSA_KEEP=false
 export OSSA_CREDS_DETECTED=false
 export OSSA_IGNORE_CREDS=false
@@ -57,7 +57,7 @@ ossa-full_Usage() {
     printf "\e[3G -d, --dir\e[28GDirectory to store Open Source Security Assessment Data (Default: /tmp/ossa_files)\n\n"
     printf "\e[3G -s, --suffix\e[28GAppend given suffix to collected files (Default: \".$(hostname -f).$(lsb_release 2>/dev/null -cs)\"\n\n"
     printf "\e[3G -o, --override\e[28GDo perform password scrubbing of embedded credentials (Default: false)\n\n"
-    printf "\e[3G -p, --purge\e[28GPurge existing OSSA Directory (Default: False)\n\n"
+    printf "\e[3G -n, --no-purge\e[28GDo NOT purge existing OSSA Directory (Default: False)\n\n"
     printf "\e[3G -k, --keep\e[28GKeep OSSA Directory after script completes (Default: False)\n\n"
     printf "\e[3G -e, --encrypt\e[28GEncrypt OSSA Datafiles with given passphrase (Default: False)\n\n"
     printf "\e[3G -m, --no-madison\e[28GDo not run apt-cache madison against package manifest (Default: False)\n\n"
@@ -77,14 +77,14 @@ ossa-full_Usage() {
 # ARGS/OPTIONS #
 ################
 
-ARGS=$(getopt -o s::d:e:O:Spomkh --long suffix::,dir:,encrypt:,origins:,scan,purge,override,keep,no-madison,help -n ${PROG} -- "$@")
+ARGS=$(getopt -o s::d:e:O:Snomkh --long suffix::,dir:,encrypt:,origins:,scan,no-purge,override,keep,no-madison,help -n ${PROG} -- "$@")
 eval set -- "$ARGS"
 while true ; do
     case "$1" in
         -d|--dir) export OSSA_DIR=${2};shift 2;;
         -e|--encrypt) export OSSA_ENCRYPT=true;export OSSA_PW="${2}";shift 2;;
         -s|--suffix) case "$2" in '') export OSSA_SUFFX="";; *) export OSSA_SUFFX="${2}";;esac;shift 2;continue;;
-        -p|--purge) export OSSA_PURGE=true;shift 1;;
+        -n|--no-purge) export OSSA_PURGE=false;shift 1;;
         -o|--override) export OSSA_IGNORE_CREDS=true;shift 1;;
         -k|--keep) export OSSA_KEEP=true;shift 1;;
         -S|--scan) export OSSA_SCAN=true;shift 1;;
@@ -336,9 +336,10 @@ if [[ ${OSSA_CREDS_DETECTED} = true && ${OSSA_IGNORE_CREDS} = true ]];then
 	[[ -f ${SOURCES_LIST} ]] && { cp ${SOURCES_LIST} ${SRC_DIR}/sources.list.${OSSA_SUFFX}; }
 	[[ -f ${SRC_DIR}/sources.list.${OSSA_SUFFX} ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied ${SOURCES_LIST} to ${SRC_DIR}/sources.list.${OSSA_SUFFX}\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Could not copy ${SOURCES_LIST} to ${SRC_DIR}/sources.list.${OSSA_SUFFX}\n";OSSA_COPY_ERRORS+=( "${SOURCES_LIST}" ); }
 else
+	[[ -f ${SOURCES_LIST} ]] && { cp ${SOURCES_LIST} ${SRC_DIR}/sources.list.${OSSA_SUFFX}; }
 	if [[ -f ${SRC_DIR}/sources.list.${OSSA_SUFFX} ]];then
 		printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied ${SOURCES_LIST} to ${SRC_DIR}/sources.list.${OSSA_SUFFX}\n";
-		printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Scrubbing any possible embedded credentials from ${SRC_DIR}/sources.list.${OSSA_SUFFX}\n\e[14GUse -o,--override option to prevent data scrubbing.\n\n"
+		printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Scrubbing any possible embedded credentials from ${SRC_DIR}/sources.list.${OSSA_SUFFX}\n\e[12GUse -o,--override option to prevent data scrubbing.\n\n"
 		[[ -f ${SRC_DIR}/sources.list.${OSSA_SUFFX} ]] && { sed -i 's/\/\/[^@+]*@/\/\//' ${SRC_DIR}/sources.list.${OSSA_SUFFX}; }
 		if [[ -n $(grep -lRE 'http?(s)://[Aa-Zz-]+:[Aa-Zz0-9-]+@' ${SRC_DIR}/sources.list.${OSSA_SUFFX}) ]];then
 			printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Scrubbing of ${SRC_DIR}/sources.list.${OSSA_SUFFX} appears to have failed.  Removing ${SRC_DIR}/sources.list.${OSSA_SUFFX}\n"
@@ -367,12 +368,12 @@ fi
 if [[ ${OSSA_CREDS_DETECTED} = true && ${OSSA_IGNORE_CREDS} = true ]];then
 	printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Copying data from ${SOURCES_LIST_D}/ that may contain embedded credentials but password scrubbing has been overridden! \n"
 	[[ -n $(find ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list") ]] && { find ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list"|xargs -rn1 -P0 bash -c 'cp ${0} ${PARTS_DIR}/${0##*/}.${OSSA_SUFFX}'; }
-	[[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list" -o -type l -iname "*.list") ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: There was an error copying files from ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n";OSSA_COPY_ERRORS+=( "${SOURCES_LIST_D}/*" ); }
+	[[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list.*" -o -type l -iname "*.list") ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: There was an error copying files from ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n";OSSA_COPY_ERRORS+=( "${SOURCES_LIST_D}/*" ); }
 else
-	printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Scrubbing any embedded credentials from ${PARTS_DIR}/*\n\e[14GUse -o,--override option to prevent data scrubbing.\n\n"
+	printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Scrubbing any embedded credentials from ${PARTS_DIR}/*\n\e[12GUse -o,--override option to prevent data scrubbing.\n\n"
 	[[ -n $(find ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list") ]] && { find ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list"|xargs -rn1 -P0 bash -c 'cp ${0} ${PARTS_DIR}/${0##*/}.${OSSA_SUFFX}'; }
-	[[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list" -o -type l -iname "*.list") ]] && find ${PARTS_DIR}/ -type f -iname "*.list" -o -type l -iname "*.list" -exec sed -i 's/\/\/[^@+]*@/\/\//' {} \;
-	if [[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list" -o -type l -iname "*.list") ]];then
+	[[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list" -o -type l -iname "*.list.*") ]] && find ${PARTS_DIR}/ -type f -iname "*.list.*" -o -type l -iname "*.list" -exec sed -i 's/\/\/[^@+]*@/\/\//' {} \;
+	if [[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list" -o -type l -iname "*.list.*") ]];then
 		printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n"
 	else
 		printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: There was an error copying files from ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n"
@@ -580,22 +581,35 @@ tput sgr0; tput cnorm; tput rmcup
 printf "\n\e[2G\e[1mOpen Source Security Assessment completed in ${OSSA_TIME}\e[0m\n\n"
 
 # Show Package Breakdown
-(for ((i=0; i<${#POCKETS[@]}; i++)); do printf '%s\n' ${POCKETS[i]};done|paste -sd"|"|sed 's/^/Ubuntu '${OSSA_RELEASE^}'|Totals|/g'
-printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[0]} ${MAIN[0]##*:} ${MAIN[1]##*:} ${MAIN[2]##*:} ${MAIN[3]##*:} ${MAIN[4]##*:} ${MAIN[5]##*:}
-printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[1]} ${UNIVERSE[0]##*:} ${UNIVERSE[1]##*:} ${UNIVERSE[2]##*:} ${UNIVERSE[3]##*:} ${UNIVERSE[4]##*:} ${UNIVERSE[5]##*:}
-printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[2]} ${MULTIVERSE[0]##*:} ${MULTIVERSE[1]##*:} ${MULTIVERSE[2]##*:} ${MULTIVERSE[3]##*:} ${MULTIVERSE[4]##*:} ${MULTIVERSE[5]##*:}
-printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[3]} ${RESTRICTED[0]##*:} ${RESTRICTED[1]##*:} ${RESTRICTED[2]##*:} ${RESTRICTED[3]##*:} ${RESTRICTED[4]##*:} ${RESTRICTED[5]##*:}
-)|column -nexts"|"| \
-sed -re '1s/Ubuntu '${OSSA_RELEASE^}'/'$(printf "\e[1;48;2;233;84;32m\e[1;38;2;255;255;255m")'&'$(printf "\e[0m")'/' \
-	-re '1s/focal/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/' \
-	-re '1s/Totals/'$(printf "\e[38;2;255;255;255m")'&'$(printf "\e[0m")'/' \
-	-re '1s/focal-updates/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/' \
-	-re '1s/focal-security/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/' \
-	-re '1s/focal-backports/'$(printf "\e[38;2;255;200;0m")'&'$(printf "\e[0m")'/g' \
-	-re '1s/focal-proposed/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g' \
-	-re 's/main|universe/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/g' \
-	-re 's/multiverse.*$|restricted.*$/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g'|sed 's/^.*$/ &/g'
-echo
+if [[ ${OSSA_MADISON} = true ]];then
+	declare -ag COMPONENTS=(main universe multiverse restricted)
+	declare -ag POCKETS=(${OSSA_RELEASE} ${OSSA_RELEASE}-updates ${OSSA_RELEASE}-security ${OSSA_RELEASE}-backports ${OSSA_RELEASE}-proposed)
+	for x in ${COMPONENTS[@]};do declare -ag ${x^^}=\(\);eval ${x^^}+=\( $(grep "/${x}" ${MFST_DIR}/madison.out.${OSSA_SUFFX}|wc -l) \);for y in ${POCKETS[@]};do eval ${x^^}+=\( ${y}:$(grep "${y}/${x}" ${MFST_DIR}/madison.out.${OSSA_SUFFX}|wc -l) \);done;done
+	export COMPONENT_TOTAL=$((${MAIN[0]##*:}+${UNIVERSE[0]##*:}+${MULTIVERSE[0]##*:}+${RESTRICTED[0]##*:}))
+	export RELEASE_TOTAL=$((${MAIN[1]##*:}+${UNIVERSE[1]##*:}+${MULTIVERSE[1]##*:}+${RESTRICTED[1]##*:}))
+	export UPDATES_TOTAL=$((${MAIN[2]##*:}+${UNIVERSE[2]##*:}+${MULTIVERSE[2]##*:}+${RESTRICTED[2]##*:}))
+	export SECURITY_TOTAL=$((${MAIN[3]##*:}+${UNIVERSE[3]##*:}+${MULTIVERSE[3]##*:}+${RESTRICTED[3]##*:}))
+	export BACKPORTS_TOTAL=$((${MAIN[4]##*:}+${UNIVERSE[4]##*:}+${MULTIVERSE[4]##*:}+${RESTRICTED[4]##*:}))
+	export PROPOSED_TOTAL=$((${MAIN[5]##*:}+${UNIVERSE[5]##*:}+${MULTIVERSE[5]##*:}+${RESTRICTED[5]##*:}))	
+	((for ((i=0; i<${#POCKETS[@]}; i++)); do printf '%s\n' ${POCKETS[i]};done|paste -sd"|"|sed 's/^/Ubuntu '${OSSA_RELEASE^}'|'${OSSA_HOST}'|/g'
+	printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[0]} ${MAIN[0]##*:} ${MAIN[1]##*:} ${MAIN[2]##*:} ${MAIN[3]##*:} ${MAIN[4]##*:} ${MAIN[5]##*:}
+	printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[1]} ${UNIVERSE[0]##*:} ${UNIVERSE[1]##*:} ${UNIVERSE[2]##*:} ${UNIVERSE[3]##*:} ${UNIVERSE[4]##*:} ${UNIVERSE[5]##*:}
+	printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[2]} ${MULTIVERSE[0]##*:} ${MULTIVERSE[1]##*:} ${MULTIVERSE[2]##*:} ${MULTIVERSE[3]##*:} ${MULTIVERSE[4]##*:} ${MULTIVERSE[5]##*:}
+	printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[3]} ${RESTRICTED[0]##*:} ${RESTRICTED[1]##*:} ${RESTRICTED[2]##*:} ${RESTRICTED[3]##*:} ${RESTRICTED[4]##*:} ${RESTRICTED[5]##*:}
+	printf '%s|%s|%s|%s|%s|%s|%s\n' Totals ${COMPONENT_TOTAL} ${RELEASE_TOTAL} ${UPDATES_TOTAL} ${SECURITY_TOTAL} ${BACKPORTS_TOTAL} ${PROPOSED_TOTAL}
+	)|column -nexts"|"| \
+	sed -re '1s/Ubuntu '${OSSA_RELEASE^}'/'$(printf "\e[1;48;2;233;84;32m\e[1;38;2;255;255;255m")'&'$(printf "\e[0m")'/' \
+		-re '1s/'${OSSA_RELEASE}'/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/' \
+		-re '1s/'${OSSA_HOST}'/'$(printf "\e[1;48;2;255;255;255m\e[1;38;2;233;84;32m")'&'$(printf "\e[0m")'/' \
+		-re '1s/'${OSSA_RELEASE}'-updates/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/' \
+		-re '1s/'${OSSA_RELEASE}'-security/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/' \
+		-re '1s/'${OSSA_RELEASE}'-backports/'$(printf "\e[38;2;255;200;0m")'&'$(printf "\e[0m")'/g' \
+		-re '1s/'${OSSA_RELEASE}'-proposed/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g' \
+		-re 's/main|universe/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/g' \
+		-re 's/multiverse.*$|restricted.*$/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g')|sed 's/^.*$/ &/g'
+		printf '\n\n'
+fi
+
 
 #show security status
 echo "${SEC_STATUS}"
