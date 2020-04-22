@@ -445,12 +445,16 @@ fi
 
 [[ ${OSSA_SCAN} = true ]] && { printf "\n\e[2G\e[1mDownload OVAL Data for CVE scanning\e[0m\n"; } || { printf "\n\e[2G\e[1mDownload OVAL Data for offline CVE scanning\e[0m\n"; }
 export SCAN_RELEASE=$(lsb_release -sc)
-OVAL_URI="https://people.canonical.com/~ubuntu-security/oval/oci.com.ubuntu.${SCAN_RELEASE,,}.cve.oval.xml.bz2"
-TEST_OVAL=$(curl -slSL --connect-timeout 5 --max-time 20 --retry 5 --retry-delay 1 -w %{http_code} -o /dev/null ${OVAL_URI} 2>&1)
-[[ ${TEST_OVAL:(-3)} -eq 200 ]] && { printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Downloading OVAL data for Ubuntu ${SCAN_RELEASE^}\n";curl -slSL --connect-timeout 5 --max-time 20 --retry 5 --retry-delay 1 ${OVAL_URI} -o- |bunzip2 -d|tee 1>/dev/null ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}); }
-[[ ${TEST_OVAL:(-3)} -eq 404 ]] && { printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: OVAL data file for Ubuntu ${SCAN_RELEASE^} is not available. Skipping download.\n"; }
-[[ ${TEST_OVAL:(-3)} -eq 200 && -s ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied OVAL data for for Ubuntu ${SCAN_RELEASE^} to ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2})\n"; }
-
+export OVAL_URI="https://people.canonical.com/~ubuntu-security/oval/oci.com.ubuntu.${SCAN_RELEASE,,}.cve.oval.xml.bz2"
+export TEST_OVAL=$(curl -slSL --connect-timeout 5 --max-time 20 --retry 5 --retry-delay 1 -w %{http_code} -o /dev/null ${OVAL_URI} 2>&1)
+[[ ${OSSA_DEBUG} = true ]] && { echo "${TEST_OVAL}"; }
+if [[ ${TEST_OVAL:(-3)} -eq 404 ]];then
+	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: OVAL data file for Ubuntu ${SCAN_RELEASE^} is not available. Skipping download.\n"
+else
+	[[ ${TEST_OVAL:(-3)} -eq 200 ]] && { printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Downloading OVAL data for Ubuntu ${SCAN_RELEASE^}\n";curl -slSL --connect-timeout 5 --max-time 20 --retry 5 --retry-delay 1 ${OVAL_URI} -o- |bunzip2 -d|tee 1>/dev/null ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2});[[ ${OSSA_DEBUG} = true ]] && { echo $?; } }
+	[[ ${OSSA_DEBUG} = true ]] && { curl 2>&1 -lSL --connect-timeout 30 --max-time 90 --retry 5 --retry-delay 5 ${OVAL_URI} -o- |bunzip2 -d|tee 1>/dev/null ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}); }
+	[[ ${TEST_OVAL:(-3)} -eq 200 && -s ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied OVAL data for for Ubuntu ${SCAN_RELEASE^} to ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2})\n"; }
+fi
 
 ####################
 # PERFORM CVE SCAN #
@@ -458,15 +462,30 @@ TEST_OVAL=$(curl -slSL --connect-timeout 5 --max-time 20 --retry 5 --retry-delay
 
 [[ ${OSSA_SCAN} = true ]] && printf "\n\e[2G\e[1mPerform online CVE scan\e[0m\n"
 if [[ ${OSSA_SCAN} = true && -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) ]];then
-	[[ -f ${MFST_DIR}/manifest.${OSSA_SUFFX} ]] && { printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Linking manifest to OVAL Data Directroy\n";ln -sf ${MFST_DIR}/manifest.${OSSA_SUFFX} ${OVAL_DIR}/${SCAN_RELEASE}.manifest; }
-	[[ -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) && -h ${OVAL_DIR}/${SCAN_RELEASE}.manifest ]] && { printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Initiating CVE Scan using OVAL data for Ubuntu ${SCAN_RELEASE^}\n"; }
-	echo
-	[[ -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) && -h ${OVAL_DIR}/${SCAN_RELEASE}.manifest ]] && { oscap oval eval --report ${RPRT_DIR}/oscap-cve-scan-report.${OSSA_SUFFX}.html ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2})|awk -vF=0 -vT=0 '{if ($NF=="false") F++} {if ($NF=="true") T++} END {print "CVE Scan Results (Summary)\nCommon Vulnerabilities Addressed: "F"\nCurrent Vulnerability Exposure: "T}'|tee ${UTIL_DIR}/cve-stats.${OSSA_SUFFX}|sed 's/^.*$/     &/g'; }
-	echo
+	if [[ -f ${MFST_DIR}/manifest.${OSSA_SUFFX} ]];then
+		printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Linking manifest to OVAL Data Directroy\n"
+		ln -sf ${MFST_DIR}/manifest.${OSSA_SUFFX} ${OVAL_DIR}/${SCAN_RELEASE}.manifest
+	fi
+	[[ -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) ]] || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Can't find OVAL data.\n\e[5GExpected it here: ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}).\n"; }
+	[[ -h ${OVAL_DIR}/${SCAN_RELEASE}.manifest ]] || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Can't find manifest symlink.\n\e[5GExpected it here: ${OVAL_DIR}/${SCAN_RELEASE}.manifest.\n"; }
+	if [[ -f ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}) && -h ${OVAL_DIR}/${SCAN_RELEASE}.manifest ]];then
+		printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Initiating CVE Scan using OVAL data for Ubuntu ${SCAN_RELEASE^}\n"
+		echo
+		oscap oval eval --report ${RPRT_DIR}/oscap-cve-scan-report.${OSSA_SUFFX}.html ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2})| \
+			awk -vF=0 -vT=0 '{if ($NF=="false") F++} {if ($NF=="true") T++} END {print "CVE Scan Results (Summary)\nCommon Vulnerabilities Addressed: "F"\nCurrent Vulnerability Exposure: "T}'| \
+			tee ${UTIL_DIR}/cve-stats.${OSSA_SUFFX}|sed 's/^.*$/     &/g'
+		OSCAP_RESULT=$?
+		[[ ${OSSA_DEBUG} = true ]] && { echo "OSCAP EXIT CODE: ${OSCAP_RESULT}"; }
+		echo
+	else
+		printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Missing OVAL Data and or manifest.\n"	
+	fi
 	[[ -s ${RPRT_DIR}/oscap-cve-scan-report.${OSSA_SUFFX}.html ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: OpenSCAP CVE Report is located @ ${RPRT_DIR}/oscap-cve-scan-report.${OSSA_SUFFX}.html\n"; }  || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: Encountered issues running OpenSCAP CVE Scan.  Report not available.\n" ; }
 	[[ -s ${UTIL_DIR}/cve-stats.${OSSA_SUFFX} ]] && { export CVE_STATUS="$(cat ${UTIL_DIR}/cve-stats.${OSSA_SUFFX})"; }
 elif [[ ${TEST_OVAL:(-3)} -eq 404 ]];then
 	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Skipping CVE scan since OVAL data for Ubuntu ${SCAN_RELEASE^} is not available.\n";
+elif [[ ${TEST_OVAL:(-3)} -eq 000 ]];then
+	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Skipping CVE scan since OVAL data for Ubuntu ${SCAN_RELEASE^} due to network issue downloading OVAL data.\n";
 else
 	printf "\e[2G - \e[38;2;0;160;200mINFO\e[0m: Skipping CVE scan due to missing OVAL data.\n\e[5GExpected to find it @ ${OVAL_DIR}/$(basename ${OVAL_URI//.bz2}).\n";
 fi
