@@ -224,9 +224,13 @@ if [[ ${OSSA_MADISON} = true ]];then
 	((awk '{print $1}' ${MFST_DIR}/manifest.${OSSA_SUFFX} |xargs -rn1 -P0 bash -c 'apt-cache madison ${0}|head -n1|awk '"'"'{print $1"|"$3"|"$6}'"'"'|xargs|tee 1>/dev/null -a '${MFST_DIR}'/madison.out.${OSSA_SUFFX}') &)
 	SPID=$(pgrep -of 'apt-cache madison')
 	declare -ag CHARS=($(printf "\u22EE\u2003\b") $(printf "\u22F0\u2003\b") $(printf "\u22EF\u2003\b") $(printf "\u22F1\u2003\b"))
-	while kill -0 $SPID 2>/dev/null;do
-			for c in ${CHARS[@]};do printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running apt-cache madison against manifest. Please wait %s\e[K\e[0m" $c;sleep .03;done
-	done
+	if [[ ${OSSA_DEBUG} = true ]];then
+		printf "Running apt-cache madison against manifest. Please wait\n"
+	else
+		while kill -0 $SPID 2>/dev/null;do
+				for c in ${CHARS[@]};do printf "\r\e[2G - \e[38;2;0;160;200mINFO\e[0m: Running apt-cache madison against manifest. Please wait %s\e[K\e[0m" $c;sleep .03;done
+		done
+	fi
 	sleep .5
 	[[ -f ${MFST_DIR}/madison.out.${OSSA_SUFFX} ]] && { printf "\r\e[K\r\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Created ${MFST_DIR}/madison.out.${OSSA_SUFFX}\n"; } || { printf "\r\e[K\r\e[2G - \e[38;2;255;0;0mERROR\e[0m: Creating ${MFST_DIR}/madison.out.${OSSA_SUFFX}\n"; }
 	MADISON_TIME=$(TZ=UTC date --date now-${MADISON_NOW} "+%H:%M:%S")
