@@ -23,15 +23,15 @@ This script accepts a package manifest as an argument and then performs an OpenS
 * There is only one option/argument required for ossa-lite.sh
 	* The path of the manifest file 
 	
-	```
+```
 	./cvescan-file.sh <manifest file>
-	```
+```
 	
 e.g.
 	
-	``` 
+``` 
 	./cvescan-file.sh ./sample-manifests/b-min.manifest
-	```
+```
 
 ### Script Output
 
