@@ -368,12 +368,12 @@ fi
 if [[ ${OSSA_CREDS_DETECTED} = true && ${OSSA_IGNORE_CREDS} = true ]];then
 	printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Copying data from ${SOURCES_LIST_D}/ that may contain embedded credentials but password scrubbing has been overridden! \n"
 	[[ -n $(find ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list") ]] && { find ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list"|xargs -rn1 -P0 bash -c 'cp ${0} ${PARTS_DIR}/${0##*/}.${OSSA_SUFFX}'; }
-	[[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list.*" -o -type l -iname "*.list") ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: There was an error copying files from ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n";OSSA_COPY_ERRORS+=( "${SOURCES_LIST_D}/*" ); }
+	[[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list.*" -o -type l -iname "*.list.*") ]] && { printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n"; } || { printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: There was an error copying files from ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n";OSSA_COPY_ERRORS+=( "${SOURCES_LIST_D}/*" ); }
 else
 	printf "\e[2G - \e[38;2;255;200;0mNOTE\e[0m: Scrubbing any embedded credentials from ${PARTS_DIR}/*\n\e[12GUse -o,--override option to prevent data scrubbing.\n\n"
 	[[ -n $(find ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list") ]] && { find ${SOURCES_LIST_D} -type f -iname "*.list" -o -type l -iname "*.list"|xargs -rn1 -P0 bash -c 'cp ${0} ${PARTS_DIR}/${0##*/}.${OSSA_SUFFX}'; }
-	[[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list" -o -type l -iname "*.list.*") ]] && find ${PARTS_DIR}/ -type f -iname "*.list.*" -o -type l -iname "*.list" -exec sed -i 's/\/\/[^@+]*@/\/\//' {} \;
-	if [[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list" -o -type l -iname "*.list.*") ]];then
+	[[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list.*" -o -type l -iname "*.list.*") ]] && find ${PARTS_DIR}/ -type f -iname "*.list.*" -o -type l -iname "*.list.*" -exec sed -i 's/\/\/[^@+]*@/\/\//' {} \;
+	if [[ -n $(find ${PARTS_DIR}/ -type f -iname "*.list.*" -o -type l -iname "*.list.*") ]];then
 		printf "\e[2G - \e[38;2;0;255;0mSUCCESS\e[0m: Copied ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n"
 	else
 		printf "\e[2G - \e[38;2;255;0;0mERROR\e[0m: There was an error copying files from ${SOURCES_LIST_D}/* to ${PARTS_DIR}/\n"
