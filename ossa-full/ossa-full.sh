@@ -98,7 +98,7 @@ test-oval-url() {
 # ARGS/OPTIONS #
 ################
 
-ARGS=$(getopt -o s::d:e:O:SnomkDh --long suffix::,dir:,encrypt:,origins:,scan,no-purge,override,keep,no-madison,help,debug -n ${PROG} -- "$@")
+ARGS=$(getopt -o s::d:e:O:SnomkDth --long suffix::,dir:,encrypt:,origins:,scan,no-purge,override,keep,no-madison,help,debug,test -n ${PROG} -- "$@")
 eval set -- "$ARGS"
 while true ; do
     case "$1" in
