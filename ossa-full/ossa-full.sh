@@ -65,6 +65,7 @@ ossa-full_Usage() {
     printf "\e[3G -O, --origins\e[28GIf you are running a mirror of an official ubuntu repository,\n\e[28Gadd the URL(s) to they can be marked as official\n\n\e[28GNote: Format should be a single URL or a space/comma\n\e[34Gseparated list, surrounded by quotes\n\n"
     printf "\e[3G -S, --scan\e[28GInstall OpenSCAP & scan manifest for CVEs. Sudo access is required only\n\e[28Gif OpenSCAP is not installed. (Default: False)\n\n"
     printf "\e[3G -D, --debug\e[28GEnable set -x\n\n"
+    printf "\e[3G -t, --test\e[28GTests access to OVAL Data URL, increasing timeouts until http return code = 200\n\n"
     printf "\e[3G -h, --help\e[28GThis message\n\n"
     printf "\e[2GExamples:\n\n"
     printf "\e[4GChange location of collected data:\n"
@@ -74,6 +75,24 @@ ossa-full_Usage() {
     printf "\n\e[4GPerform CVE Scan, encrypt compressed archive of collected data, and\n\e[6Gkeep data directory after run\n\n"
     printf '\e[6G./'${FUNCNAME%%_*}'.sh -Ske '"'"'MyP@ssW0rd!'"'"' \n\n'
 };export -f ossa-full_Usage
+
+
+############
+# URL-TEST #
+############
+test-oval-url() {
+	export URI="https://people.canonical.com/~ubuntu-security/oval/oci.com.ubuntu.bionic.cve.oval.xml.bz2"
+	export C=1 M=10 T=000
+	echo "Testing connectivity to https://people.canonical.com/~ubuntu-security/oval/oci.com.ubuntu.bionic.cve.oval.xml.bz2"
+	until [[ ${T:(-3)} -eq 200 ]];do 
+		T="$(curl -slSL --connect-timeout ${C} --max-time ${M} -w %{http_code} --retry 0 -o /dev/null ${URI} 2>&1)"
+		C=$((C+1)) M=$((M+1))
+		[[ ${TL:(-3)} -eq 200 ]] && { echo "\rHTTP Code: $T Time Values: connect-timeout=$C max-time=$M\e[K\n\n"; } || { echo -en "\rHTTP Code: $T Time Values: connect-timeout=$C max-time=$M\e[K"; }
+		sleep 1
+	done
+	echo
+	return ${T:(-3)}
+};export -f test-oval-url
 
 ################
 # ARGS/OPTIONS #
@@ -93,6 +112,7 @@ while true ; do
         -m|--no-madison) export OSSA_MADISON=false;shift 1;;
         -O|--origins) declare -ag EXTRA_ORIGINS=($(printf "${2//[,| ]/\\n}\n"));shift 2;;
         -D|--debug) export OSSA_DEBUG=true;shift 1;;
+        -t|--test) test-oval-url;exit 0;;
         -h|--help) ossa-full_Usage;exit 2;;
         --) shift;break;;
     esac

@@ -1,9 +1,24 @@
 #!/bin/bash
 
-[[ -z ${1} || ${1} =~ -h || ! -f ${1} ]] && { echo -en "Usage: ./${0##*/} <path to ossa-lite archive>\nNote: sudo access is required\n" 1>&2;exit 2; }
-[[ -f ${1} ]] && export OSSA_ARCHIVE=${1}
-
 export PROG_DIR="$( cd "$( dirname "${0}" )/" && pwd )"
+
+test-oval-url() {
+	export URI="https://people.canonical.com/~ubuntu-security/oval/oci.com.ubuntu.bionic.cve.oval.xml.bz2"
+	export C=1 M=10 T=000
+	echo "Testing connectivity to https://people.canonical.com/~ubuntu-security/oval/oci.com.ubuntu.bionic.cve.oval.xml.bz2"
+	until [[ ${T:(-3)} -eq 200 ]];do 
+		T="$(curl -slSL --connect-timeout ${C} --max-time ${M} -w %{http_code} --retry 0 -o /dev/null ${URI} 2>&1)"
+		C=$((C+1)) M=$((M+1))
+		[[ ${TL:(-3)} -eq 200 ]] && { echo "\rHTTP Code: $T Time Values: connect-timeout=$C max-time=$M\e[K\n\n"; } || { echo -en "\rHTTP Code: $T Time Values: connect-timeout=$C max-time=$M\e[K"; }
+		sleep 1
+	done
+	echo
+	export C=${C} M=${M}
+	return ${T:(-3)}
+};export -f test-oval-url
+[[ -n ${1} && ${1} =~ -t ]] && { test-oval-url 1>&2;exit 0; }
+[[ -z ${1} || ${1} =~ -h || ! -f ${1} ]] && { echo -en "Usage: ./${0##*/} -t|--test Tests access to OVAL Data URL\n\n\e[7G./${0##*/} <path to ossa-lite archive>\nNote: sudo access is required\n" 1>&2;exit 2; }
+[[ -f ${1} ]] && export OSSA_ARCHIVE=${1}
 
 #Root/sudo check
 [[ ${EUID} -eq 0 ]] && { export SCMD="";[[ ${DEBUG} = True ]] && { printf "\e[38;2;255;200;0mDEBUG: User is root\n\n"; };exit; } || { [[ ${EUID} -ne 0 && -n $(id|grep -io sudo) ]] && export SCMD=sudo || { export SCMD="";printf "\e[38;2;255;0;0mERROR: User (${USER}) does not have sudo permissions. Quitting.\n\n";exit 5; }; }
@@ -45,7 +60,6 @@ echo export OSSA_HOST=$(grep -oP '(?<=madison\.)[^$]+' <<< "${OSSA_ARCHIVE//.tgz
 [[ -s ${DPKG_L} ]] && { awk '/^ii/{print $2"\t"$3}' ${DPKG_L}|tee 1>/dev/null ${OSSA_WORKDIR}/manifest.${OSSA_HOST}; }
 echo "export OSSA_MANIFEST=${OSSA_WORKDIR}/manifest.${OSSA_HOST}"|tee 1>/dev/null -a ${OSSARC}
 [[ -s ${OSSA_RC} ]] && source ${OSSA_RC}
-#!/bin/bash
 show-release-info() {
 (printf "\nRelease|Code Name|Release Type|Standard Support Ends In...|ESM Ends In...\n"
 (UBU_URLS=( http://releases.ubuntu.com http://old-releases.ubuntu.com/releases )
@@ -87,7 +101,6 @@ done))|column -nexts"|"|sed '2s/^.*$/'$(printf "\e[1m&\e[0m")'/g'
 echo
 };export show-release-info
 
-clear
 show-release-info
 # Show package breakdown by component and suite
 if [[ -f ${APT_MADISON} ]];then
