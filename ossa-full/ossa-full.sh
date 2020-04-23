@@ -609,7 +609,7 @@ OSSA_TIME=$(TZ=UTC date --date now-${NOW} "+%H:%M:%S")
 echo
 
 # Display countdown message so user understands screen will be cleared
-i=19;until [[ -n ${INPUT} || $i = 0 ]];do [[ $i -eq 1 ]] && W= || W=s;printf 1>&2 "\r\e[2G\e[1mHit ENTER or wait \e[1;33m${i} \e[0m\e[1msecond${W} to clear OSSA data from the screen\e[0m\e[K";read -s -t 1 -N 1 INPUT;let i=$i-1;printf "\e[K\r\e[K";done
+[[ ${OSSA_DEBUG} = true ]] || { i=19;until [[ -n ${INPUT} || $i = 0 ]];do [[ $i -eq 1 ]] && W= || W=s;printf 1>&2 "\r\e[2G\e[1mHit ENTER or wait \e[1;33m${i} \e[0m\e[1msecond${W} to clear OSSA data from the screen\e[0m\e[K";read -s -t 1 -N 1 INPUT;let i=$i-1;printf "\e[K\r\e[K";done; }
 [[ ${OSSA_DEBUG} = true ]] || { tput sgr0; tput cnorm; tput rmcup; }
 
 # Show elapsed time
