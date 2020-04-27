@@ -55,3 +55,20 @@ Once collector.sh has completed, the script will print a pointer to the local co
 	Data collected by the OSSA Collector is located at 
 	/tmp/ossa-collector-data.ubuntu.example.org.tgz.
 	```
+## Data Colllected
+
+|Files Collected|Purpose|
+|:------------- |:------------- |
+|/etc/apt/sources.list|To ensure proper package origin is used for assessment|
+|/etc/hostname|To identify hostname of assessed system(s)|
+|/etc/hosts|To identify hostname of assessed system(s)|
+|/etc/lsb-release|To indentify the release of Ubuntu being assessed|
+|/var/lib/apt/lists/*Release|To ensure proper package names/versions are used for assessment|
+|/var/lib/apt/lists/*Packages|To ensure proper package names/versions are used for assessment|
+|/var/lib/dpkg/status|To ensure proper package names/versions are used for assessment|
+|```dpkg -l``` output|To ensure proper package names/versions are used for assessment|
+|```apt-cache``` policy output|To ensure proper package origin is used for assessment|
+|```snap list``` output|To show which snaps are being used on assessed system(s)|
+|```ps -auxwww``` output|To help identify which packages are actually being used|
+|```ps -eao pid,ppid,user,stat,etimes,cmd --sort=cmd``` output|To help identify which packages are actually being used|
+|```netstat -an``` output|To help identify which packages are actually being used|
