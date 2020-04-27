@@ -4,7 +4,7 @@ set -e
 trap 'tput cnorm;trap - INT TERM EXIT KILL QUIT;exit 0' INT TERM EXIT KILL QUIT;
 tput civis
 PROG=${0##*/}
-echo -e "\nRunning ${PROG//.sh/}. Please wait..."
+echo -e "\nRunning ${PROG//.sh/} against ${SSH_HOST##*@}. Please wait..."
 # Start Timer
 TZ=UTC export NOW=$(date +%s)sec
 ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o CheckHostIP=no ${SSH_HOST} bash -c '\
@@ -28,5 +28,5 @@ ps 2>/dev/null -eao pid,ppid,user,stat,etimes,cmd --sort=cmd > /tmp/ps-eao.${SFX
 [[ ! -f /etc/lsb-release && $(command -v lsb_release) ]] && { for i in ID RELEASE CODENAME DESCRIPTION;do echo "DISTRIB_${i}=\"$(lsb_release -s$(echo ${i,,}|cut -c1))\""; done|tee 1>/dev/null /tmp/lsb-release.${SFX};[[ $? -eq 0 && -f /tmp/lsb-release.${SFX} ]] && FILES+=( "lsb-release.${SFX}" ); }
 sleep 1
 tar -C /tmp -cf - "${FILES[@]}";echo $?'|gzip -c|tee 1>/dev/null /tmp/${PROG//.sh}.${SSH_HOST##*@}.tgz;
-echo -e "\n${PROG//.sh} completed in $(TZ=UTC date --date now-${NOW} "+%H:%M:%S").\n";
+echo -e "\n${PROG//.sh} for ${SSH_HOST##*@} completed in $(TZ=UTC date --date now-${NOW} "+%H:%M:%S").\n";
 echo -e "Data collected by ${PROG//.sh} is located at /tmp/${PROG//.sh}.${SSH_HOST##*@}.tgz.\n";
