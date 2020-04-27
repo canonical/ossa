@@ -42,16 +42,17 @@ sudo-prompt() {
 
 ### Functions related to URL validation and downloading ###
 proxy-check() {
-    [[ $1 = '--desc' ]] && { printf "\e[2G${FUNCNAME}: Checks for existence of proxy variables.\n";return; }
+    [[ $1 = '--desc' ]] && { printf "\e[2G${FUNCNAME}: Checks for existence of proxy variables.\n" 1>&2;return 2; }
     [[ -n $(set -o posix;set|/bin/grep -ioE '^[Aa-Zz]*_PROXY'|sed '/^MAAS/d') ]] && { echo true;return 0; } || { echo false;return 1; }
 }
 
 uvars() {
-	[[ -z ${1} || ${1} =~ -h ]] && { echo -en "Usage: ./${0##*/} <path to ossa-lite archive>\nNote: sudo access is required\n" 1>&2;exit 2; }
+	[[ -z ${1} || ${1} =~ -h ]] && { echo -en "Usage: ${FUNCNAME} <VAR_PREFIX> (to unset)\n" 1>&2;return 2; }
 	local UVAR="${1}"
 	unset $(set -o posix;set|/bin/grep -oE ''$(printf "^${UVAR}?(_)*%s*[^=]+\n")''|paste -sd" ")
 }
 svars() {
+	[[ -z ${1} || ${1} =~ -h ]] && { echo -en "Usage: ${FUNCNAME} <VAR_PREFIX> (to show)\n" 1>&2;return 2; }
 	local SVAR="${1}"
 	(set -o posix;set|/bin/grep -oE ''$(printf "^${SVAR}?(_)*%s*[^=]+\n")'')|xargs -rn1 -P1 bash -c 'eval echo ${0}=\$${0}'
 }
@@ -64,10 +65,10 @@ printf '%s\n' ${UBU_RELEASES_CSV[@]}|tee 1>/dev/null ubuntu-releases.csv
 
 
 kill-biters() {
-	[[ $1 = '--desc' ]] && { printf "${RO}${FUNCNAME}${RT}: Kill all zombie processes\n";return; }
-	sudo-prompt   
-	$SCMD kill $(ps -A -ostat,ppid | awk '/[zZ]/{print $2}')
-	}
+	[[ $1 = '--desc' ]] && { printf "${RO}${FUNCNAME}${RT}: Kill all zombie processes\n" 1>&2;return 2; }
+	sudo-check;[[ $? -eq 0 ]] || { echo -en "Note: sudo access is required\n" 1>&2;return 5; }
+	${SCMD} kill $(ps -A -ostat,ppid | awk '/[zZ]/{print $2}')
+}
 
 show-release-info() {
 (printf "Release|Code Name|Release Type|Days until EOS (Date)|Days until EOL (Date)\n"
