@@ -8,9 +8,9 @@ echo -e "\nRunning ${PROG//.sh/}. Please wait..."
 # Start Timer
 TZ=UTC export NOW=$(date +%s)sec
 ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o CheckHostIP=no ${SSH_HOST} bash -c '\
-declare -ag FILES #Create an array for file names
+declare -ag FILES
 # Cleanup remote computer when complete
-trap '"'"'(cd /tmp && rm -f ${FILES[@]//\/tmp\/});trap - INT TERM EXIT QUIT KILL;exit 0'"'"' INT TERM EXIT QUIT KILL;
+#trap '"'"'(cd /tmp && rm -f ${FILES[@]//\/tmp\/});trap - INT TERM EXIT QUIT KILL;exit 0'"'"' INT TERM EXIT QUIT KILL;
 export SFX=$(hostname -s)
 # Get apt and dpkg file locations from apt-config
 export SOURCES_LIST=$(apt-config dump|awk '"'"'/^Dir[ ]|^Dir::Etc[ ]|^Dir::Etc::sourcel/{gsub(/"|;$/,"");print "/"$2}'"'"'|sed -r '"'"':a;N;$! ba;s/\/\/|\n//g'"'"')
@@ -44,6 +44,6 @@ ps 2>/dev/null -eao pid,ppid,user,stat,etimes,cmd --sort=cmd > /tmp/ps-eao.${SFX
 [[ ! -f /etc/lsb-release && $(command -v lsb_release) ]] && { for i in ID RELEASE CODENAME DESCRIPTION;do echo "DISTRIB_${i}=\"$(lsb_release -s$(echo ${i,,}|cut -c1))\""; done|tee 1>/dev/null /tmp/lsb-release.${SFX};[[ $? -eq 0 && -f /tmp/lsb-release.${SFX} ]] && FILES+=( "/tmp/lsb-release.${SFX}" ); }
 
 # Create tarball of files and store on local computer
-tar -C /tmp -cf - ${FILES[@]//\/tmp\/}'|gzip -c|tee 1>/dev/null /tmp/${PROG//.sh}.${SSH_HOST##*@}.tgz;
+tar -C /tmp -cf - "${FILES[@]//\/tmp\/}"'|gzip -c|tee 1>/dev/null /tmp/${PROG//.sh}.${SSH_HOST##*@}.tgz;
 echo -e "\n${PROG//.sh} completed in $(TZ=UTC date --date now-${NOW} "+%H:%M:%S").\n";
 echo -e "Data collected by ${PROG//.sh} is located at /tmp/${PROG//.sh}.${SSH_HOST##*@}.tgz.\n";
