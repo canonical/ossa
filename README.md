@@ -11,22 +11,18 @@ git clone https://github.com/ThinGuy/ossa.git
 
 ## Available Scripts
 
-* [ossa-full](https://github.com/ThinGuy/ossa/tree/master/ossa-full) - Gathers information about packages and processes, scan for CVEs, etc.
-* [ossa-lite](https://github.com/ThinGuy/ossa/tree/master/ossa-lite) - Script intended to be ran on a remote system via ssh.  This version runs the fastest, but lacks package origin information.
-* [ossa-lite-madison](https://github.com/ThinGuy/ossa/tree/master/ossa-lite-madison) - Script intended to be ran on a remote system via ssh.  This version grabs [apt-cache madison](https://manpages.ubuntu.com/manpages/bionic/man8/apt-cache.8.html) information so package origin can be derived
-
+* [ossa-collector](https://github.com/ThinGuy/ossa/tree/master/ossa-collector) - Gathers information about a remote machine's packages and processes, etc. 
+* [ossa-generator](https://github.com/ThinGuy/ossa/tree/master/ossa-generator) - This script processes the information obtained via collector.
 
 ### Prerequisites
 
-* A machine (physical, virtual, container) running Ubuntu 14.04 or later
-* A standard user (non-privileged) account on the machine
-	* An account with [sudo access](https://help.ubuntu.com/community/Sudoers) is ONLY required if:
-		* You wish to perform CVE Scanning while running the [ossa-full](https://github.com/ThinGuy/ossa/tree/master/ossa-full) script AND if OpenSCAP is not already installed
-			* If OpenSCAP is already installed, sudo access  is not required to perform the scan
-			* If the CVE Scan option is selected AND sudo access is detected, some of the gather tools will collect more information than if ran as a non-privileged account.
-* ssh access to the above machine for the "lite" scripts
+* Target machine(s): (physical, virtual, container) running Ubuntu 14.04 or later
+	* A standard user (non-privileged) account on the machine
+	* An account with ssh access
+
+* Source Machine: (physical, virtual, container)
 	* MacOS, Linux, and Windows 10 with "Windows Subsystem for Linux" (WSL) all work
-	* Windows users can make use of powershell, but that is an exercise left to the user
+		* Windows users can make use of powershell, but that is an exercise left to the user
 
 
 ## Running the scripts

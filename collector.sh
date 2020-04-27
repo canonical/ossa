@@ -1,0 +1,1 @@
+ossa-collector/collector.sh
