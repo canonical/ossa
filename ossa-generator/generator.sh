@@ -7,10 +7,7 @@ declare -c TITLE="${PROG//.sh}"
 export TITLE_FULL="OSSA ${TITLE}"
 [[ -f ${SCRIPT_DIR}/../lib/ossa_functions ]] && source ${SCRIPT_DIR}/../lib/ossa_functions
 
-[[ -f 
-[[ -z ${1} || ${1} =~ -h || ! -f ${1} ]] && { echo -en "Usage: ./${0##*/} <path to ossa-lite archive>\nNote: sudo access is required\n" 1>&2;exit 2; }
-
-[[ -f ${PROG_DIR}/../lib/ossa_functions ]] && source ${PROG_DIR}/../lib/ossa_functions 
+[[ -z ${1} || ${1} =~ -h || ! -f ${1} ]] && { echo -en "Usage: ./${PROG} <path to ossa-lite archive>\nNote: sudo access is required\n" 1>&2;exit 2; }
 
 #Root/sudo check
 [[ ${EUID} -eq 0 ]] && { export SCMD="";[[ ${DEBUG} = True ]] && { printf "\e[38;2;255;200;0mDEBUG: User is root\n\n"; };exit; } || { [[ ${EUID} -ne 0 && -n $(id|grep -io sudo) ]] && export SCMD=sudo || { export SCMD="";printf "\e[38;2;255;0;0mERROR: User (${USER}) does not have sudo permissions. Quitting.\n\n";exit 5; }; }
@@ -69,7 +66,7 @@ echo "export OSSA_MANIFEST=${OSSA_WORKDIR}/manifest.${OSSA_HOST}"|tee 1>/dev/nul
 
 # Create package origin list ( ~ apt-cache madison using files only)
 TZ=UTC export NOW=$(date +%s)sec;
-SPID=$((dpkg -l |awk '/^ii/{gsub(/:.*$/,"",$2);print $2,$3}')|xargs -rn2 -P0 bash -c 'printf "${0}|${1}|$(grep "^Package: ${0//+/\+}$" /var/lib/apt/lists/*_Packages|head -n1|sed -r "s/^.*dists_|_binary.*$//g;s/_/\//g")\n"'|tee 1>/dev/null ~/apt-madison.txt) &
+SPID=$((dpkg -l |awk '/^ii/{gsub(/:.*$/,"",$2);print $2,$3}')|xargs -rn2 -P0 bash -c 'printf "${0}|${1}|$(grep "^Package: ${0//+/\+}$" /var/lib/apt/lists/*_Packages|head -n1|sed -r "s/^.*dists_|_binary.*$//g;s/_/\//g")\n"'|tee 1>/dev/null ${OSSA_WORKDIR}/apt-madison.out) &
 SPID=$!
 declare -ag CHARS=($(printf "\u22EE\u2003\b") $(printf "\u22F0\u2003\b") $(printf "\u22EF\u2003\b") $(printf "\u22F1\u2003\b"))
 while kill -0 $SPID 2>/dev/null;do
@@ -78,16 +75,21 @@ done
 wait $SPID
 echo -en "\r\e[K\rParsing package origin information took $(TZ=UTC date --date now-${NOW} "+%H:%M:%S").\n";
 
+# add madion file info to rc file
+echo "export OSSA_MADISON=\"${OSSA_WORKDIR}/apt-madison.out\""|tee 1>/dev/null -a ${OSSARC}
+
+# source updated rc file
+[[ -s ${OSSA_RC} ]] && source ${OSSA_RC}
 
 show-release-info|tee ${OSSA_WORKDIR}/release-table.ansi|sed 2>/dev/null 's/\x1b\[[0-9;]*[a-zA-Z]//g'|tee 1>/dev/null ${OSSA_WORKDIR}/release.table.txt
 ([[ -f ${OSSA_WORKDIR}/release-table.ansi ]] && echo "export OSSA_RELEASE_TABLE_ANSI=${OSSA_WORKDIR}/release-table.ansi"|tee 1>/dev/null -a ${OSSA_RC})
 ([[ -f ${OSSA_WORKDIR}/release-table.txt ]] && echo "export OSSA_RELEASE_TABLE=${OSSA_WORKDIR}/release-table.txt"|tee 1>/dev/null -a ${OSSA_RC})
 
+# show release info
+[[ -n ${OSSA_RELEASE_TABLE} && -f ${OSSA_RELEASE_TABLE} ]] && cat ${OSSA_RELEASE_TABLE}
 
-
-#cp ${OSSA_MANIFEST} ${PROG_DIR}
-#printf "Running cvescan -f ${PROG_DIR}/${OSSA_MANIFEST##*/} -p all\n"
-#cvescan -f ${PROG_DIR}/${OSSA_MANIFEST##*/}
+# show package origin info
+show-repo-info
 
 ######################
 # DOWNLOAD OVAL DATA #
