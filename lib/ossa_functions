@@ -99,13 +99,13 @@ sed 2>/dev/null 's/\x1b\[[0-9;]*[a-zA-Z]//g' release-info.ansi|tee 1>/dev/null r
 
 show-repo-info() {
 # Show package breakdown by component and suite
-if [[ -f ${APT_MADISON} ]];then
+if [[ -f ${OSSA_MADISON} ]];then
 	declare -ag COMPONENTS=(main universe multiverse restricted)
 	declare -ag POCKETS=(${OSSA_CODENAME} ${OSSA_CODENAME}-updates ${OSSA_CODENAME}-security ${OSSA_CODENAME}-backports ${OSSA_CODENAME}-proposed)
 	for x in ${COMPONENTS[@]};do
-		declare -ag ${x^^}=\(\);eval ${x^^}+=\( $(grep "/${x}" ${APT_MADISON}|wc -l) \)
+		declare -ag ${x^^}=\(\);eval ${x^^}+=\( $(grep "/${x}" ${OSSA_MADISON}|wc -l) \)
 		for y in ${POCKETS[@]};do
-			eval ${x^^}+=\( ${y}:$(grep "${y}/${x}" ${APT_MADISON}|wc -l) \)
+			eval ${x^^}+=\( ${y}:$(grep "${y}/${x}" ${OSSA_MADISON}|wc -l) \)
 		done
 	done
 	export COMPONENT_TOTAL=$((${MAIN[0]##*:}+${UNIVERSE[0]##*:}+${MULTIVERSE[0]##*:}+${RESTRICTED[0]##*:}))
