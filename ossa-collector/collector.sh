@@ -11,7 +11,7 @@ TZ=UTC export NOW=$(date +%s)sec
 ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o CheckHostIP=no ${SSH_HOST} bash -c '\
 declare -ag FILES=();
 trap '"'"'(cd /tmp && rm -f "${FILES[@]//\/tmp\/}");trap - INT TERM EXIT QUIT KILL;exit 0'"'"' INT TERM EXIT QUIT KILL;
-declare -ag FILES=();
+declare -ag FILES;
 export SFX=$(hostname -s)
 export SOURCES_LIST=$(apt-config dump|awk '"'"'/^Dir[ ]|^Dir::Etc[ ]|^Dir::Etc::sourcel/{gsub(/"|;$/,"");print "/"$2}'"'"'|sed -r '"'"':a;N;$! ba;s/\/\/|\n//g'"'"')
 export SOURCES_LIST_D=$(apt-config dump|awk '"'"'/^Dir[ ]|^Dir::Etc[ ]|^Dir::Etc::sourcep/{gsub(/"|;$/,"");print "/"$2}'"'"'|sed -r '"'"':a;N;$! ba;s/\/\/|\n//g'"'"')
