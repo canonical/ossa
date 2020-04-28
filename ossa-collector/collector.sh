@@ -32,5 +32,3 @@ sleep 1
 tar -C /tmp -cf - "${FILES[@]}";echo $?'|gzip -c|tee 1>/dev/null /tmp/ossa-${PROG//.sh}-data.${SSH_HOST##*@}.tgz;
 echo -e "\nOSSA ${TITLE} for ${SSH_HOST##*@} completed in $(TZ=UTC date --date now-${NOW} "+%H:%M:%S").\n";
 echo -e "Data collected by the OSSA ${TITLE} is located at \n/tmp/ossa-${PROG//.sh}-data.${SSH_HOST##*@}.tgz.\n";
-
-Data collected by the OSSA Collector is located at /tmp/ossa-collector-data.ubuntu.example.org.tgz.
