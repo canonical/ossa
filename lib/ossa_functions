@@ -1,7 +1,7 @@
 RSCHK=$_
 [[ $RSCHK != $0 ]] || { echo "Error: ${SOURCEDIR}/${BASH_SOURCE[@]##*/} is being ran directly!  Please \"source\" this script."; exit; }
-export FUNCTIONS="$( cd "$( dirname "${BASH_SOURCE[0]}" )/" && pwd )/${BASH_SOURCE[0]##*/}"
-export FUNCTIONS_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+export FUNCTIONS="$(readlink -f $( cd "$( dirname "${BASH_SOURCE[0]}" )/" && pwd )/${BASH_SOURCE[0]##*/})"
+export FUNCTIONS_DIR=${FUNCTIONS%/*}
 
 [[ -f ${FUNCTIONS_DIR}/text.ansi ]] && source ${FUNCTIONS_DIR}/text.ansi
 
