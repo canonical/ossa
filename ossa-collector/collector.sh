@@ -1,5 +1,8 @@
 #!/bin/bash
 set -e
+export SSH_OPTS="-q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o CheckHostIP=no"
+[[ ${DEBUG} = true ]] && set -x
+[[ ${DEBUG} = true ]] && export SSH_OPTS="-vvvv -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o CheckHostIP=no"
 [[ -z ${1} || ${1} =~ '-h' ]] && { printf "Usage: ./${0##*/} user@host\n";exit 2; } || { export SSH_HOST="${1}"; }
 trap 'tput cnorm;trap - INT TERM EXIT KILL QUIT;exit 0' INT TERM EXIT KILL QUIT;
 tput civis
@@ -8,9 +11,9 @@ declare -c TITLE="${PROG//.sh}"
 echo -e "\nRunning OSSA ${TITLE} against ${SSH_HOST##*@}. Please wait..."
 # Start Timer
 TZ=UTC export NOW=$(date +%s)sec
-ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o CheckHostIP=no ${SSH_HOST} bash -c '\
-declare -ag FILES;
+ssh ${SSH_OPTS} ${SSH_HOST} bash -c '\
 trap '"'"'(cd /tmp && rm -f "${FILES[@]//\/tmp\/}");trap - INT TERM EXIT QUIT KILL;exit 0'"'"' INT TERM EXIT QUIT KILL;
+declare -ag FILES;
 export SFX=$(hostname -s);
 export SOURCES_LIST=$(apt-config dump|awk '"'"'/^Dir[ ]|^Dir::Etc[ ]|^Dir::Etc::sourcel/{gsub(/"|;$/,"");print "/"$2}'"'"'|sed -r '"'"':a;N;$! ba;s/\/\/|\n//g'"'"')
 export SOURCES_LIST_D=$(apt-config dump|awk '"'"'/^Dir[ ]|^Dir::Etc[ ]|^Dir::Etc::sourcep/{gsub(/"|;$/,"");print "/"$2}'"'"'|sed -r '"'"':a;N;$! ba;s/\/\/|\n//g'"'"')
@@ -27,7 +30,8 @@ ps 2>/dev/null -auxwww > /tmp/ps-auxwww.${SFX};[[ $? -eq 0 && -f /tmp/ps-auxwww.
 ps 2>/dev/null -eao pid,ppid,user,stat,etimes,cmd --sort=cmd > /tmp/ps-eao.${SFX};[[ $? -eq 0 && -f /tmp/ps-eao.${SFX} ]] && FILES+=( "ps-eao.${SFX}" );
 [[ -f /etc/lsb-release ]] && { cp /etc/lsb-release /tmp/lsb-release.${SFX};[[ $? -eq 0 && -f /tmp/lsb-release.${SFX} ]] && FILES+=( "lsb-release.${SFX}" ); }
 [[ ! -f /etc/lsb-release && $(command -v lsb_release) ]] && { for i in ID RELEASE CODENAME DESCRIPTION;do echo "DISTRIB_${i}=\"$(lsb_release -s$(echo ${i,,}|cut -c1))\""; done|tee 1>/dev/null /tmp/lsb-release.${SFX};[[ $? -eq 0 && -f /tmp/lsb-release.${SFX} ]] && FILES+=( "lsb-release.${SFX}" ); }
-sleep 1
-tar -C /tmp -cf - "${FILES[@]}";echo $?'|gzip -c|tee 1>/dev/null /tmp/ossa-${PROG//.sh}-data.${SSH_HOST##*@}.tgz;
+export FLIST=$(printf "%s\n" ${FILES[@]}|paste -sd " ")
+tar -C /tmp -cf - ${FLIST}'|gzip -c|tee 1>/dev/null /tmp/ossa-${PROG//.sh}-data.${SSH_HOST##*@}.tgz;
 echo -e "\nOSSA ${TITLE} for ${SSH_HOST##*@} completed in $(TZ=UTC date --date now-${NOW} "+%H:%M:%S").\n";
 echo -e "Data collected by the OSSA ${TITLE} is located at \n/tmp/ossa-${PROG//.sh}-data.${SSH_HOST##*@}.tgz.\n";
+[[ ${DEBUG} = true ]] && set +x
