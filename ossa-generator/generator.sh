@@ -1,13 +1,20 @@
 #!/bin/bash
 
-export PROG_DIR="$( cd "$( dirname "${0}" )/" && pwd )"
+export SCRIPT="$(readlink -f $( cd "$( dirname "${BASH_SOURCE[0]}" )/" && pwd )/${BASH_SOURCE[0]##*/})"
+export SCRIPT_DIR=${SCRIPT%/*}
+export PROG=${0##*/}
+declare -c TITLE="${PROG//.sh}"
+export TITLE_FULL="OSSA ${TITLE}"
+[[ -f ${SCRIPT_DIR}/../lib/ossa_functions ]] && source ${SCRIPT_DIR}/../lib/ossa_functions
+
+[[ -f 
 [[ -z ${1} || ${1} =~ -h || ! -f ${1} ]] && { echo -en "Usage: ./${0##*/} <path to ossa-lite archive>\nNote: sudo access is required\n" 1>&2;exit 2; }
 
 [[ -f ${PROG_DIR}/../lib/ossa_functions ]] && source ${PROG_DIR}/../lib/ossa_functions 
 
 #Root/sudo check
 [[ ${EUID} -eq 0 ]] && { export SCMD="";[[ ${DEBUG} = True ]] && { printf "\e[38;2;255;200;0mDEBUG: User is root\n\n"; };exit; } || { [[ ${EUID} -ne 0 && -n $(id|grep -io sudo) ]] && export SCMD=sudo || { export SCMD="";printf "\e[38;2;255;0;0mERROR: User (${USER}) does not have sudo permissions. Quitting.\n\n";exit 5; }; }
-
+TZ=UTC export NOW=$(date +%s)sec;
 
 [[ -f ${1} ]] && export OSSA_ARCHIVE=${1}
 [[ ${VERBOSE} = true ]] && { printf "Using OSSA data from ${OSSA_ARCHIVE}\n"; }
@@ -51,8 +58,7 @@ set|grep ^OSSA|sed 's|^|export |g'|tee 1>/dev/null ${OSSA_RC}
 (cd ${OSSA_WORKDIR} && ls -1|xargs -rn1 -P0 bash -c 'V=${0%%.*};V=${V^^};V=${V//-/_};echo $V="$( cd "$( dirname "${0}" )/" && pwd )/${0##*/}"'|tee 1>/dev/null -a ${OSSA_RC})
 [[ -s ${OSSA_RC} ]] && { [[ ${VERBOSE} = true ]] && printf "Sourcing RC file (${OSSA_RC})\n";source ${OSSA_RC}; }
 [[ -f ${LSB_RELEASE} ]] && sed 's/DISTRIB/OSSA/g' ${LSB_RELEASE} |tee 1>/dev/null -a ${OSSARC}
-echo export OSSA_HOST=$(grep -oP '(?<=madison\.)[^$]+' <<< "${OSSA_ARCHIVE//.tgz}")|tee 1>/dev/null -a ${OSSARC}
-[[ -s ${OSSA_RC} ]] && source ${OSSA_RC}
+
 
 # Create manifest
 [[ -s ${DPKG_L} ]] && { awk '/^ii/{print $2"\t"$3}' ${DPKG_L}|tee 1>/dev/null ${OSSA_WORKDIR}/manifest.${OSSA_HOST}; }
@@ -61,8 +67,19 @@ echo "export OSSA_MANIFEST=${OSSA_WORKDIR}/manifest.${OSSA_HOST}"|tee 1>/dev/nul
 # source updated rc file
 [[ -s ${OSSA_RC} ]] && source ${OSSA_RC}
 
+# Create package origin list ( ~ apt-cache madison using files only)
+TZ=UTC export NOW=$(date +%s)sec;
+SPID=$((dpkg -l |awk '/^ii/{gsub(/:.*$/,"",$2);print $2,$3}')|xargs -rn2 -P0 bash -c 'printf "${0}|${1}|$(grep "^Package: ${0//+/\+}$" /var/lib/apt/lists/*_Packages|head -n1|sed -r "s/^.*dists_|_binary.*$//g;s/_/\//g")\n"'|tee 1>/dev/null ~/apt-madison.txt) &
+SPID=$!
+declare -ag CHARS=($(printf "\u22EE\u2003\b") $(printf "\u22F0\u2003\b") $(printf "\u22EF\u2003\b") $(printf "\u22F1\u2003\b"))
+while kill -0 $SPID 2>/dev/null;do
+for c in ${CHARS[@]};do printf "\r\e[2G - ${TITLE_FULL}: Parsing package origin information. Please wait %s  (Elapsed Time: $(TZ=UTC date --date now-${NOW} "+%M:%S"))\e[K\e[0m" $c;sleep .03;done
+done
+wait $SPID
+echo -en "\r\e[K\rParsing package origin information took $(TZ=UTC date --date now-${NOW} "+%H:%M:%S").\n";
 
-[[ -f ${OSSA_WORKDIR}/release-table.ansi && ${OSSA_WORKDIR}/release-table.txt ]] || { show-release-info|tee ${OSSA_WORKDIR}/release-table.ansi|sed 2>/dev/null 's/\x1b\[[0-9;]*[a-zA-Z]//g'|tee 1>/dev/null ${OSSA_WORKDIR}/release.table.txt; }
+
+show-release-info|tee ${OSSA_WORKDIR}/release-table.ansi|sed 2>/dev/null 's/\x1b\[[0-9;]*[a-zA-Z]//g'|tee 1>/dev/null ${OSSA_WORKDIR}/release.table.txt
 ([[ -f ${OSSA_WORKDIR}/release-table.ansi ]] && echo "export OSSA_RELEASE_TABLE_ANSI=${OSSA_WORKDIR}/release-table.ansi"|tee 1>/dev/null -a ${OSSA_RC})
 ([[ -f ${OSSA_WORKDIR}/release-table.txt ]] && echo "export OSSA_RELEASE_TABLE=${OSSA_WORKDIR}/release-table.txt"|tee 1>/dev/null -a ${OSSA_RC})
 
