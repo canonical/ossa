@@ -1,10 +1,12 @@
 #!/bin/bash
-
+[[ ${DEBUG} = true ]] && set -x
 export SCRIPT="$(readlink -f $( cd "$( dirname "${BASH_SOURCE[0]}" )/" && pwd )/${BASH_SOURCE[0]##*/})"
 export SCRIPT_DIR=${SCRIPT%/*}
 export PROG=${0##*/}
 declare -c TITLE="${PROG//.sh}"
 export TITLE_FULL="OSSA ${TITLE}"
+trap 'tput cnorm;[[ ${DEBUG} = true ]] && set +x;trap - INT TERM EXIT KILL QUIT;exit 0' INT TERM EXIT KILL QUIT;
+tput civis
 [[ -f ${SCRIPT_DIR}/../lib/ossa_functions ]] && source ${SCRIPT_DIR}/../lib/ossa_functions
 
 [[ -z ${1} || ${1} =~ -h || ! -f ${1} ]] && { echo -en "Usage: ./${PROG} <path to ossa-lite archive>\nNote: sudo access is required\n" 1>&2;exit 2; }
@@ -18,25 +20,28 @@ TZ=UTC export NOW=$(date +%s)sec;
 
 
 # set ossa user
-[[ ${VERBOSE} = true ]] && { printf "Setting \${OSSA_USER} to "; }
-[[ -z ${OSSA_USER} ]] && export OSSA_USER=${OSSA_USER:-$(id -un 1000)};[[ ${VERBOSE} = true ]] && { echo $OSSA_USER; }
+[[ -z ${OSSA_USER} ]] && export OSSA_USER=${OSSA_USER:-$(id -un 1000)}
+[[ ${VERBOSE} = true ]] && { printf "Setting \${OSSA_USER} to $OSSA_USER\n"; }
 
 # set ossa group 
-[[ ${VERBOSE} = true ]] && { printf "Setting \${OSSA_GROUP} to "; }
-[[ -z ${OSSA_GROUP} ]] && export ${OSSA_GROUP:-$(id -gn 1000)};echo ${OSSA_GROUP}
+[[ -z ${OSSA_GROUP} ]] && export OSSA_GROUP=${OSSA_GROUP:-$(id -gn 1000)}
+[[ ${VERBOSE} = true ]] && { printf "Setting \${OSSA_GROUP} to ${OSSA_GROUP}\n"; }
 
 # main ossa directory
 export OSSA_DIR=/opt/ossa;[[ ${VERBOSE} = true ]] && { printf "Setting \${OSSA_DIR} to ${OSSA_DIR}\n"; }
 
 # working directory for this assesment 
-export OSSA_WORKDIR="${OSSA_DIR}/$(basename ${OSSA_ARCHIVE%.*})";[[ ${VERBOSE} = true ]] && { printf "Setting \${OSSA_WORKDIR} to ${OSSA_WORKDIR}\n"
+export OSSA_WORKDIR="${OSSA_DIR}/$(basename ${OSSA_ARCHIVE%.*})"
+[[ ${VERBOSE} = true ]] && { printf "Setting \${OSSA_WORKDIR} to ${OSSA_WORKDIR}\n"; }
 
 # set rc file
-export OSSA_RC=${OSSA_WORKDIR}/ossarc;[[ ${VERBOSE} = true ]] && { printf "Setting \${OSSA_RC} to ${OSSA_RC}\n"; }
+export OSSA_RC=${OSSA_WORKDIR}/ossarc
+[[ ${VERBOSE} = true ]] && { printf "Setting \${OSSA_RC} to ${OSSA_RC}\n"; }
 
 # Make working directroy and extract the archive
-[[ ${VERBOSE} = true ]] && { printf "Exractive OSSA data from ${OSSA_ARCHIVE}\n"; }
-${SCMD} mkdir -p ${OSSA_WORKDIR} && ${SCMD} tar -C ${OSSA_WORKDIR} -xzf ${OSSA_ARCHIVE}
+[[ ${VERBOSE} = true ]] && { printf "Extracting OSSA data from ${OSSA_ARCHIVE}\n"; }
+${SCMD} mkdir -p ${OSSA_WORKDIR}
+[[ -f ${OSSA_ARCHIVE} ]] && ${SCMD} tar -C ${OSSA_WORKDIR} -xvzf ${OSSA_ARCHIVE}
 
 # set workdir permisssions
 if [[ -n ${OSSA_WORKDIR} && -d ${OSSA_WORKDIR} ]];then
@@ -63,6 +68,7 @@ echo "export OSSA_MANIFEST=${OSSA_WORKDIR}/manifest.${OSSA_HOST}"|tee 1>/dev/nul
 
 # source updated rc file
 [[ -s ${OSSA_RC} ]] && source ${OSSA_RC}
+[[ -s ${OSSA_RC} ]] && { [[ ${VERBOSE} = true ]] && printf "Sourcing RC file (${OSSA_RC})\n";source ${OSSA_RC}; }
 
 # Create package origin list ( ~ apt-cache madison using files only)
 TZ=UTC export NOW=$(date +%s)sec;
@@ -75,11 +81,16 @@ done
 wait $SPID
 echo -en "\r\e[K\rParsing package origin information took $(TZ=UTC date --date now-${NOW} "+%H:%M:%S").\n";
 
-# add madion file info to rc file
+# add package origin file info to rc file
+[[ ${VERBOSE} = true ]] && { printf "Adding OSSA_MADISON env variable to ${OSSA_RC}\n"; }
 echo "export OSSA_MADISON=\"${OSSA_WORKDIR}/apt-madison.out\""|tee 1>/dev/null -a ${OSSARC}
 
 # source updated rc file
 [[ -s ${OSSA_RC} ]] && source ${OSSA_RC}
+[[ -s ${OSSA_RC} ]] && { [[ ${VERBOSE} = true ]] && printf "Sourcing RC file (${OSSA_RC})\n";source ${OSSA_RC}; }
+
+
+[[ ${VERBOSE} = true ]] && { printf "Running show-release-info...\n"; }
 
 show-release-info|tee ${OSSA_WORKDIR}/release-table.ansi|sed 2>/dev/null 's/\x1b\[[0-9;]*[a-zA-Z]//g'|tee 1>/dev/null ${OSSA_WORKDIR}/release.table.txt
 ([[ -f ${OSSA_WORKDIR}/release-table.ansi ]] && echo "export OSSA_RELEASE_TABLE_ANSI=${OSSA_WORKDIR}/release-table.ansi"|tee 1>/dev/null -a ${OSSA_RC})
@@ -89,6 +100,7 @@ show-release-info|tee ${OSSA_WORKDIR}/release-table.ansi|sed 2>/dev/null 's/\x1b
 [[ -n ${OSSA_RELEASE_TABLE} && -f ${OSSA_RELEASE_TABLE} ]] && cat ${OSSA_RELEASE_TABLE}
 
 # show package origin info
+[[ ${VERBOSE} = true ]] && { printf "Running show-repo-info...\n"; }
 show-repo-info
 
 ######################
@@ -117,3 +129,4 @@ printf "\e[6GOVAL Scan Type:  Package manifest\n\e[6GOrigin Hostname: ${OSSA_HOS
 fi
 
 echo;echo
+[[ ${DEBUG} = true ]] && set +x
