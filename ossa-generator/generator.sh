@@ -26,16 +26,14 @@ tput civis
 # source OSSA functions
 [[ -f ${SCRIPT_DIR}/../lib/ossa_functions ]] && source ${SCRIPT_DIR}/../lib/ossa_functions
 
-PKG_PREQS=(libopenscap8 xsltproc curl)
+# set OSSA_HOST based on OSSA_ARCHIVE filename
+[[ -n ${OSSA_ARCHIVE} ]] && export OSSA_HOST=$(grep -oP '(?<=data\.).*(?=\.tgz$)' <<< "${OSSA_ARCHIVE}") || export OSSA_HOST=unknown
 
 # main ossa directory
 export OSSA_DIR=/opt/ossa
 
 # working directory for this assessment
-export OSSA_WORKDIR="${OSSA_DIR}/$(basename ${OSSA_ARCHIVE%.*})"
-
-# set OSSA_HOST based on OSSA_ARCHIVE filename
-[[ -n ${OSSA_ARCHIVE} ]] && export OSSA_HOST=$(echo ${OSSA_ARCHIVE}|grep -oP '(?<=data\.)[^.]+') || export OSSA_HOST=unknown
+export OSSA_WORKDIR="${OSSA_DIR}/${OSSA_HOST}"
 
 # set ossa user
 [[ -z ${OSSA_USER} ]] && export OSSA_USER=${OSSA_USER:-$(id -un 1000)}
