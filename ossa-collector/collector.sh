@@ -26,6 +26,7 @@ if (command -v netstat &>/dev/null);then NETSTAT=$(command -v netstat);elif (com
 dpkg 2>/dev/null -l > /tmp/dpkg-l.${SFX};[[ $? -eq 0 && -f /tmp/dpkg-l.${SFX} ]] && FILES+=( "dpkg-l.${SFX}" );
 apt-cache 2>/dev/null policy > /tmp/apt-policy.${SFX};[[ $? -eq 0 && -f /tmp/apt-policy.${SFX} ]] && FILES+=( "apt-policy.${SFX}" );
 [[ $(command -v snap) ]] && { snap 2>/dev/null list > /tmp/snap-list.${SFX};[[ $? -eq 0 && -f /tmp/snap-list.${SFX} ]] && FILES+=( "snap-list.${SFX}" ); }
+[[ $(command -v popularity-contest) ]] && { popularity-contest > /tmp/popularity-contest.${SFX};[[ $? -eq 0 && -f /tmp/popularity-contest.${SFX} ]] && FILES+=( "popularity-contest.${SFX}" ); }
 ps 2>/dev/null -auxwww > /tmp/ps-auxwww.${SFX};[[ $? -eq 0 && -f /tmp/ps-auxwww.${SFX} ]] && FILES+=( "ps-auxwww.${SFX}" );
 ps 2>/dev/null -eao pid,ppid,user,stat,etimes,cmd --sort=cmd > /tmp/ps-eao.${SFX};[[ $? -eq 0 && -f /tmp/ps-eao.${SFX} ]] && FILES+=( "ps-eao.${SFX}" );
 [[ -f /etc/lsb-release ]] && { cp /etc/lsb-release /tmp/lsb-release.${SFX};[[ $? -eq 0 && -f /tmp/lsb-release.${SFX} ]] && FILES+=( "lsb-release.${SFX}" ); }
