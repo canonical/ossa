@@ -1,10 +1,24 @@
 RSCHK=$_
-[[ $RSCHK != $0 ]] || { echo "Error: ${SOURCEDIR}/${BASH_SOURCE[@]##*/} is being ran directly!  Please \"source\" this script."; exit; }
 export FUNCTIONS="$(readlink -f $( cd "$( dirname "${BASH_SOURCE[0]}" )/" && pwd )/${BASH_SOURCE[0]##*/})"
 export FUNCTIONS_DIR=${FUNCTIONS%/*}
+[[ $RSCHK != $0 ]] || { echo "Error: ${FUNCTIONS} is being ran directly!  Please \"source\" this script."; exit; }
 
-[[ -f ${FUNCTIONS_DIR}/text.ansi ]] && source ${FUNCTIONS_DIR}/text.ansi
+### validation functions ###
+# validate if a package is installed
+is-installed() {
+	[[ -z ${1} || $1 =~ -h ]] && { printf "\e[2GUsage: ${FUNCNAME} <package name>.\n" 1>&2;return 2; } || { local PKG=${1,,}; }
+	[[ -n ${2} && $2 =~ -q ]] && local Q=true || local Q=false
+	local PCHECK=$(dpkg -l ${PKG}|awk '/^ii/&&/'${PKG}'/{gsub(/:.*$/,"",$2);print $2}')
+	[[ ${PCHECK} = ${PKG} ]] && { [[ $Q = false ]] && echo true;return 0; } || { [[ $Q = false ]] && echo false;return 1; }
+}
 
+### file/script related functions
+# source a file
+source-file() {
+	[[ -z ${1} || $1 =~ -h ]] && { printf "\e[2GUsage: ${FUNCNAME} <file to source>\n" 1>&2;return 2; } || { local SRCFILE=${1}; }
+	[[ -n ${2} && $2 =~ -q ]] && local Q=true || local Q=false
+	[[ -s ${SRCFILE} ]] && { [[ $Q = false ]] && printf "Sourcing file (${SRCFILE})\n";source ${SRCFILE};return 0; } || { [[ $Q = false ]] && printf "Cannot file file: \"${SRCFILE}\"\n";return 1; }
+};export -f source-file
 
 ### Authentication Functions ####
 sudo-check() {
@@ -12,7 +26,7 @@ sudo-check() {
 	[[ $EUID -eq 0 ]] && { export SCMD=;[[ ${DEBUG} = True ]] && { echo -en "DEBUG: User is root\n" 1>&2; }; return 0; }
 	[[ $EUID -ne 0 && -n $(grep -o sudo <(id 2>/dev/null -Gn)) ]] && { export SCMD="sudo -E";[[ ${DEBUG} = True ]] && { echo -en "DEBUG: User (${USER}) has sudo access.\n"; }; return 0; }
 	[[ $EUID -ne 0 && -z $(grep -o sudo <(id 2>/dev/null -Gn)) ]] && { export SCMD="";[[ ${DEBUG} = True ]] && { echo -en "DEBUG: User (${USER}) does NOT have sudo access.\n"; };return 5; }
-}
+};export -f sudo-check
 
 write-sudoers-file() {
 	[[ $1 = '--desc' ]] && { printf "\e[2G${FUNCNAME}: Write a temporary sudoers file in case the customization session exceeds sudo password grace period\n";return; }
@@ -20,7 +34,7 @@ write-sudoers-file() {
 	export SUDOERS_FILE="$(echo ${0##*/}|sed 's/\..*$//1').${USER}.suduoers"
 	[[ -f ${SUDOERS_FILE} ]] && true || { printf ''${USER}' ALL=(ALL) NOPASSWD: ALL'|$SCMD tee 1>/dev/null /etc/sudoers.d/${SUDOERS_FILE}; }
 	[[ $? -eq 0 ]] && printf "\e[2G - To prevent authentication timeouts, ${SUDOERS_FILE} has\n\e[5Gbeen created in /etc/sudoers.d & will be removed when ${0##*/} finishes.\n\n"
-}
+};export -f write-sudoers-file
 
 sudo-prompt() {
 	[[ $1 = '--desc' ]] && { printf "\e[2G${FUNCNAME}: Ensures cached sudo password is viable, if not, prompts user for password and temporarily disables sudo password requirement.\n";return; }
@@ -37,40 +51,58 @@ sudo-prompt() {
 		[[ ${DEBUG} = true ]] && printf '\e[2G - Cached sudo password is still viable.\n'
 		[[ ${WRITE_SUDOERS} = true ]] && write-sudoers-file
 	fi
-}
+};export -f sudo-prompt
 
 
 ### Functions related to URL validation and downloading ###
+[[ $(command -v systemd-resolve) ]] && export RSLV_CMD="systemd-resolve --status"
+[[ $(command -v resolvectl) ]] && export RSLV_CMD="resolvectl status"
+export PRIMARY_NIC=$(ip 2>/dev/null -o r show default|grep -m1 -oP '(?<=dev )[^ ]+')
+
+nslookup-test(){
+	[[ -z ${1} || $1 =~ -h ]] && { printf "\e[2GUsage: ${FUNCNAME} <fqdn>.\n" 1>&2;return 2; } || { local NHOST=${1}; }
+	local CDNS=$($RSLV_CMD $PRIMARY_NIC|awk '/Current DNS Server:/{print $NF}')
+	local NSTEST=$(nslookup ${NHOST} 2>&1)
+	[[ "${NSTEST}" =~ ";; connection timed out;" ]] && { printf "Could not reach DNS Server: ${CDNS}\n"; }
+	[[ "${NSTEST}" =~ "** server can't find" ]] && { printf "No A Record found for ${NHOST} on DNS Server: ${CDNS}\n"; }
+	[[ -n $(echo "${NSTEST}"|awk '/^Address: (([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]?)/') ]] && { printf "Name resolution (via nslookup) OK for ${NHOST}\n"; }
+}
+
+dig-test(){
+	[[ -z ${1} || $1 =~ -h ]] && { printf "\e[2GUsage: ${FUNCNAME} <fqdn>.\n" 1>&2;return 2; } || { local DHOST=${1}; }
+	local CDNS=$($RSLV_CMD $PRIMARY_NIC|awk '/Current DNS Server:/{print $NF}')
+	local DIGTEST=$(dig a ${DHOST}|awk '/'${DHOST}'.*IN.*A/{print $NF}')
+	[[ $DIGTEST = A ]] && { printf "No A Record found for ${DHOST} on DNS Server: ${CDNS}\n"; }
+	[[ $DIGTEST =~ (([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]?) ]] && { printf "Name resolution (via dig) OK for ${DHOST}\n"; }
+}
+
+
 proxy-check() {
     [[ $1 = '--desc' ]] && { printf "\e[2G${FUNCNAME}: Checks for existence of proxy variables.\n" 1>&2;return 2; }
     [[ -n $(set -o posix;set|/bin/grep -ioE '^[Aa-Zz]*_PROXY'|sed '/^MAAS/d') ]] && { echo true;return 0; } || { echo false;return 1; }
-}
+};export -f proxy-check
 
 uvars() {
 	[[ -z ${1} || ${1} =~ -h ]] && { echo -en "Usage: ${FUNCNAME} <VAR_PREFIX> (to unset)\n" 1>&2;return 2; }
 	local UVAR="${1}"
 	unset $(set -o posix;set|/bin/grep -oE ''$(printf "^${UVAR}?(_)*%s*[^=]+\n")''|paste -sd" ")
-}
+};export -f uvars
+
 svars() {
 	[[ -z ${1} || ${1} =~ -h ]] && { echo -en "Usage: ${FUNCNAME} <VAR_PREFIX> (to show)\n" 1>&2;return 2; }
 	local SVAR="${1}"
 	(set -o posix;set|/bin/grep -oE ''$(printf "^${SVAR}?(_)*%s*[^=]+\n")'')|xargs -rn1 -P1 bash -c 'eval echo ${0}=\$${0}'
-}
+};export -f svars
 
-make-csv-array() {
+get-release-info() {
 declare -ag UBU_URLS=( http://releases.ubuntu.com http://old-releases.ubuntu.com/releases );     
-declare -ag UBU_RELEASES_CSV=($(printf '%s\n' ${UBU_URLS[@]}|(xargs -rn1 -P0 -I{} curl -sSlL {}|awk -vRS=">|<" '/^Ubuntu.[0-9]+.*'${CODENAME^}'/{gsub(/\(|\).*$|LTS |Beta /,"");gsub(/\.[0-9]$/,"",$2);split($2,a,/\./);print tolower($2),tolower($3),tolower($4)}')|sort -uV|sed 's/ /,/g'))
-printf '%s\n' ${UBU_RELEASES_CSV[@]}|tee 1>/dev/null ubuntu-releases.csv
-}
-
-
-kill-biters() {
-	[[ $1 = '--desc' ]] && { printf "${RO}${FUNCNAME}${RT}: Kill all zombie processes\n" 1>&2;return 2; }
-	sudo-check;[[ $? -eq 0 ]] || { echo -en "Note: sudo access is required\n" 1>&2;return 5; }
-	${SCMD} kill $(ps -A -ostat,ppid | awk '/[zZ]/{print $2}')
-}
+declare -ag UBU_RELEASES_CSV=($(printf '%s\n' ${UBU_URLS[@]}|(xargs -rn1 -P0 -I{} curl -sSlL {}|awk -vRS=">|<" '/^Ubuntu.[0-9]+.*'${OSSA_CODENAME^}'/{gsub(/\(|\).*$|LTS |Beta /,"");gsub(/\.[0-9]$/,"",$2);split($2,a,/\./);print tolower($2),tolower($3),tolower($4)}')|sort -uV|sed 's/ /,/g'))
+printf '%s\n' ${UBU_RELEASES_CSV[@]}|tee 1>/dev/null ${OSSA_WORKDIR}/ubuntu-releases.csv
+};export -f get-release-info
 
 show-release-info() {
+[[ -f ${OSSA_WORKDIR}/ubuntu-releases.csv ]] && declare -ag UBU_RELEASES_CSV=($(cat ${OSSA_WORKDIR}/ubuntu-releases.csv))
+[[ -z ${UBU_RELEASES_CSV[@]} || ${#UBU_RELEASES_CSV[@]} -lt 1 ]] && { get-release-info; }
 (printf "Release|Code Name|Release Type|Days until EOS (Date)|Days until EOL (Date)\n"
 (printf '%s\n' "${UBU_RELEASES_CSV[@]//,/ }"| \
 while read -er RELEASE CN1 CN2;do
@@ -93,11 +125,10 @@ elif [[ ${EOL_DAYS_REMAINING} -lt 365 ]];then EOL_DAYS_REMAINING=$(printf "\e[38
 elif [[ ${EOL_DAYS_REMAINING} -gt 365 ]];then EOL_DAYS_REMAINING=$(printf "\e[38;2;0;235;0m${EOL_DAYS_REMAINING} days\e[0m ($(date -d "$(date +${EOL_END})" '+%d/%b/%Y'))");fi
 [[ ${EL} = 0 ]] && EOL_DAYS_REMAINING=$(printf "\e[38;2;160;160;160;3mN/A\e[0m")
 echo "Ubuntu ${RELEASE^}|${CN1^} ${CN2^}|${FLAG^}|${EOS_DAYS_REMAINING}|${EOL_DAYS_REMAINING}"
-done))|column -nexts"|"|sed '2s/^.*$/'$(printf "\e[1m&\e[0m")'/g'|tee 1>/dev/null release-info.ansi
-sed 2>/dev/null 's/\x1b\[[0-9;]*[a-zA-Z]//g' release-info.ansi|tee 1>/dev/null release-info.txt
+done))|column -nexts"|"|sed 's/^Release.*$/'$(printf "\e[1m&\e[0m")'/g'|tee ${OSSA_WORKDIR}/release-info.ansi|sed 's/\x1b\[[0-9;]*[a-zA-Z]//g'|tee 1>/dev/null ${OSSA_WORKDIR}/release-info.txt
 };export -f show-release-info
 
-show-repo-info() {
+make-origin-table() {
 # Show package breakdown by component and suite
 if [[ -f ${OSSA_MADISON} ]];then
 	declare -ag COMPONENTS=(main universe multiverse restricted)
@@ -129,7 +160,7 @@ if [[ -f ${OSSA_MADISON} ]];then
 		-re '1s/'${OSSA_CODENAME}'-backports/'$(printf "\e[38;2;255;200;0m")'&'$(printf "\e[0m")'/g' \
 		-re '1s/'${OSSA_CODENAME}'-proposed/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g' \
 		-re 's/main|universe/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/g' \
-		-re 's/multiverse.*$|restricted.*$/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g')|sed 's/^.*$/ &/g'|tee ${OSSA_WORKDIR}/package_table.ansi
+		-re 's/multiverse.*$|restricted.*$/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g')|tee ${OSSA_WORKDIR}/package_table.ansi|sed 's/\x1b\[[0-9;]*[a-zA-Z]//g'|tee 1>/dev/null ${OSSA_WORKDIR}/package_table.txt
 		printf '\n\n'
 fi
-}
+};export -f make-origin-table
