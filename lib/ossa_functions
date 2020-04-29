@@ -125,7 +125,7 @@ elif [[ ${EOL_DAYS_REMAINING} -lt 365 ]];then EOL_DAYS_REMAINING=$(printf "\e[38
 elif [[ ${EOL_DAYS_REMAINING} -gt 365 ]];then EOL_DAYS_REMAINING=$(printf "\e[38;2;0;235;0m${EOL_DAYS_REMAINING} days\e[0m ($(date -d "$(date +${EOL_END})" '+%d/%b/%Y'))");fi
 [[ ${EL} = 0 ]] && EOL_DAYS_REMAINING=$(printf "\e[38;2;160;160;160;3mN/A\e[0m")
 echo "Ubuntu ${RELEASE^}|${CN1^} ${CN2^}|${FLAG^}|${EOS_DAYS_REMAINING}|${EOL_DAYS_REMAINING}"
-done))|column -nexts"|"|sed 's/^Release.*$/'$(printf "\e[1m&\e[0m")'/g'|/bin/grep -E "Release|${OSSA_CODENAME^}"|tee ${OSSA_WORKDIR}/release-info.ansi|sed 's/\x1b\[[0-9;]*[a-zA-Z]//g'|tee 1>/dev/null ${OSSA_WORKDIR}/release-info.txt
+done))|column -nexts"|"|sed 's/^Release.*$/'$(printf "\e[1m&\e[0m")'/g'|/bin/grep -E "Release|${OSSA_CODENAME^}"|tee ${OSSA_WORKDIR}/release-info-ansi|sed 's/\x1b\[[0-9;]*[a-zA-Z]//g'|tee 1>/dev/null ${OSSA_WORKDIR}/release-info
 };export -f show-release-info
 
 make-origin-table() {
@@ -160,7 +160,7 @@ if [[ -f ${OSSA_MADISON} ]];then
 		-re '1s/'${OSSA_CODENAME}'-backports/'$(printf "\e[38;2;255;200;0m")'&'$(printf "\e[0m")'/g' \
 		-re '1s/'${OSSA_CODENAME}'-proposed/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g' \
 		-re 's/main|universe/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/g' \
-		-re 's/multiverse.*$|restricted.*$/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g')|tee ${OSSA_WORKDIR}/package-table.ansi|sed 's/\x1b\[[0-9;]*[a-zA-Z]//g'|tee 1>/dev/null ${OSSA_WORKDIR}/package-table.txt
+		-re 's/multiverse.*$|restricted.*$/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g')|tee ${OSSA_WORKDIR}/package-table-ansi|sed 's/\x1b\[[0-9;]*[a-zA-Z]//g'|tee 1>/dev/null ${OSSA_WORKDIR}/package-table
 		printf '\n\n'
 fi
 };export -f make-origin-table
