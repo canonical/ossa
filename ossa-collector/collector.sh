@@ -1,8 +1,7 @@
 #!/bin/bash
 set -e
 export SSH_OPTS="-q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o CheckHostIP=no"
-[[ ${DEBUG} = true ]] && set -x
-[[ ${DEBUG} = true ]] && export SSH_OPTS="-vvvv -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o CheckHostIP=no"
+[[ ${DEBUG} = true ]] && { set -x;export SSH_OPTS="-vvvv -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o CheckHostIP=no"; }
 [[ -z ${1} || ${1} =~ '-h' ]] && { printf "Usage: ./${0##*/} user@host\n";exit 2; } || { export SSH_HOST="${1}"; }
 trap 'tput cnorm;trap - INT TERM EXIT KILL QUIT;exit 0' INT TERM EXIT KILL QUIT;
 tput civis
@@ -26,7 +25,7 @@ if (command -v netstat &>/dev/null);then NETSTAT=$(command -v netstat);elif (com
 dpkg 2>/dev/null -l > /tmp/dpkg-l.${SFX};[[ $? -eq 0 && -f /tmp/dpkg-l.${SFX} ]] && FILES+=( "dpkg-l.${SFX}" );
 apt-cache 2>/dev/null policy > /tmp/apt-policy.${SFX};[[ $? -eq 0 && -f /tmp/apt-policy.${SFX} ]] && FILES+=( "apt-policy.${SFX}" );
 [[ $(command -v snap) ]] && { snap 2>/dev/null list > /tmp/snap-list.${SFX};[[ $? -eq 0 && -f /tmp/snap-list.${SFX} ]] && FILES+=( "snap-list.${SFX}" ); }
-[[ $(command -v popularity-contest) ]] && { popularity-contest > /tmp/popularity-contest.${SFX};[[ $? -eq 0 && -f /tmp/popularity-contest.${SFX} ]] && FILES+=( "popularity-contest.${SFX}" ); }
+[[ $(command -v popularity-contest) ]] && { popularity-contest 2>/dev/null > /tmp/popularity-contest.${SFX};[[ $? -eq 0 && -f /tmp/popularity-contest.${SFX} ]] && FILES+=( "popularity-contest.${SFX}" ); }
 ps 2>/dev/null -auxwww > /tmp/ps-auxwww.${SFX};[[ $? -eq 0 && -f /tmp/ps-auxwww.${SFX} ]] && FILES+=( "ps-auxwww.${SFX}" );
 ps 2>/dev/null -eao pid,ppid,user,stat,etimes,cmd --sort=cmd > /tmp/ps-eao.${SFX};[[ $? -eq 0 && -f /tmp/ps-eao.${SFX} ]] && FILES+=( "ps-eao.${SFX}" );
 [[ -f /etc/lsb-release ]] && { cp /etc/lsb-release /tmp/lsb-release.${SFX};[[ $? -eq 0 && -f /tmp/lsb-release.${SFX} ]] && FILES+=( "lsb-release.${SFX}" ); }
