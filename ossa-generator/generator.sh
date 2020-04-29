@@ -26,6 +26,8 @@ tput civis
 # source OSSA functions
 [[ -f ${SCRIPT_DIR}/../lib/ossa_functions ]] && source ${SCRIPT_DIR}/../lib/ossa_functions
 
+PKG_PREQS=(libopenscap8 xsltproc curl)
+
 # main ossa directory
 export OSSA_DIR=/opt/ossa
 
@@ -51,6 +53,7 @@ export OSSA_RC=${OSSA_WORKDIR}/ossarc
 [[ ${VERBOSE} = true ]] && { printf "Extracting OSSA data from ${OSSA_ARCHIVE}\n"; }
 ${SCMD} mkdir -p ${OSSA_WORKDIR}
 [[ -f ${OSSA_ARCHIVE} ]] && ${SCMD} tar -C ${OSSA_WORKDIR} -xzf ${OSSA_ARCHIVE}
+[[ -n $(find ${OSSA_WORKDIR} -maxdepth 1 -type f -iname "apt-files.*\.tar") ]] && { mkdir -p ${OSSA_WORKDIR}/apt && tar -C ${OSSA_WORKDIR}/apt -xf $(find ${OSSA_WORKDIR} -maxdepth 1 -type f -iname "apt-files.*\.tar"); }
 
 # set workdir permisssions
 if [[ -n ${OSSA_WORKDIR} && -d ${OSSA_WORKDIR} ]];then
@@ -95,7 +98,7 @@ if [[ -f ${OSSA_WORKDIR}/manifest.${OSSA_HOST} ]];then
 		[[ ${VERBOSE} = true ]] && { printf "Parsing package origin information. Please wait\n"; }
 	else
 		while kill -0 $SPID 2>/dev/null;do
-			[[ ${VERBOSE} = true ]] && { for c in ${CHARS[@]};do printf "\r - ${TITLE_FULL}: Parsing package origin information. Please wait %s  (Elapsed Time: $(TZ=UTC date --date now-${NOW} "+%M:%S"))\e[K\e[0m" $c;sleep .03;done; }
+			for c in ${CHARS[@]};do printf 1>&2 "\r - ${TITLE_FULL}: Parsing package origin information. Please wait %s  (Elapsed Time: $(TZ=UTC date --date now-${NOW} "+%M:%S"))\e[K\e[0m" $c;sleep .03;done
 		done
 	fi
 	wait $SPID
@@ -128,8 +131,8 @@ fi
 # Run show-release-info function
 show-release-info
 # add release info tables to rc file
-([[ -f ${OSSA_WORKDIR}/release-info.ansi ]] && echo "export OSSA_RELEASE_TABLE_ANSI=${OSSA_WORKDIR}/release-info.ansi"|tee 1>/dev/null -a ${OSSA_RC})
-([[ -f ${OSSA_WORKDIR}/release-info.txt ]] && echo "export OSSA_RELEASE_TABLE=${OSSA_WORKDIR}/release-info.txt"|tee 1>/dev/null -a ${OSSA_RC})
+([[ -f ${OSSA_WORKDIR}/release-info-ansi ]] && echo "export OSSA_RELEASE_TABLE_ANSI=${OSSA_WORKDIR}/release-info-ansi"|tee 1>/dev/null -a ${OSSA_RC})
+([[ -f ${OSSA_WORKDIR}/release-info ]] && echo "export OSSA_RELEASE_TABLE=${OSSA_WORKDIR}/release-info"|tee 1>/dev/null -a ${OSSA_RC})
 # re-source updated rc file
 source-file ${OSSA_RC} -q
 
@@ -137,10 +140,14 @@ source-file ${OSSA_RC} -q
 # show package origin info
 make-origin-table
 # add package table info tables to rc file
-([[ -f ${OSSA_WORKDIR}/package-table.ansi ]] && echo "export OSSA_PACKAGE_TABLE_ANSI=${OSSA_WORKDIR}/package-table.ansi"|tee 1>/dev/null -a ${OSSA_RC})
-([[ -f ${OSSA_WORKDIR}/package-table.txt ]] && echo "export OSSA_PACKAGE_TABLE=${OSSA_WORKDIR}/package-table.txt"|tee 1>/dev/null -a ${OSSA_RC})
+([[ -f ${OSSA_WORKDIR}/package-table-ansi ]] && echo "export OSSA_PACKAGE_TABLE_ANSI=${OSSA_WORKDIR}/package-table-ansi"|tee 1>/dev/null -a ${OSSA_RC})
+([[ -f ${OSSA_WORKDIR}/package-table ]] && echo "export OSSA_PACKAGE_TABLE=${OSSA_WORKDIR}/package-table"|tee 1>/dev/null -a ${OSSA_RC})
 # re-source updated rc file
 source-file ${OSSA_RC} -q
+
+
+# get package names for popularity contest
+[[ -f ${OSSA_WORKDIR}/popularity-contest.${OSSA_HOST} ]] && { awk 'BEGIN { cmd="dpkg -S" $4"|sed 's/:.*$//g'"};{if ($0 ~ /"POPULAR"/) next};{OFS=",";if ( $1 ~ /^[0-9]+$/ && $1 != 0) {cmd="dpkg -S "$4"|sed 's/:.*$//g'";cmd|getline P;print strftime("%Y-%m-%d-%H:%M:%S", $1),strftime("%Y-%m-%d-%H:%M:%S", $2),$3,$4,P;next} else print $1,$2,$3,$4;next}' ${OSSA_WORKDIR}/popularity-contest.${OSSA_HOST}; }
 
 # Install OpenSCAP if not installed
 [[ $(is-installed openscap-daemon) = true ]] || { printf "Installing OpenSCAP.  You may be prompted for your password\n";${SCMD} apt install -yq openscap-daemon &>/tmp/install.openscap-daemon.log; }
@@ -165,12 +172,13 @@ fi
 if [[ ${TEST_OVAL:(-3)} -eq 200 ]];then
 	[[ ${VERBOSE} = true ]] && { printf "Initiating download of OVAL data for Ubuntu ${OSSA_CODENAME^}\n"; }
 	curl -slSL --connect-timeout 10 --max-time 30 --retry 2 --retry-delay 2 ${OVAL_URI} -o- |bunzip2 -d|tee 1>/dev/null ${OSSA_WORKDIR}/$(basename ${OVAL_URI//.bz2})
-	[[ $? -eq 0 && -f ${OSSA_WORKDIR}/$(basename ${OVAL_URI//.bz2}) ]] || { OVAL_MSG="Errors occurred while downloaind OVAL data for Ubuntu ${OSSA_CODENAME}\n";export NO_CVE_SCAN=true; }
+	TEST_OVAL_RC="$?"
+	[[ $? -eq 0 && -f ${OSSA_WORKDIR}/$(basename ${OVAL_URI//.bz2}) ]] || { OVAL_MSG="Error(s) occurred (${TEST_OVAL_RC}) while downloading OVAL data for Ubuntu ${OSSA_CODENAME}\n";export NO_CVE_SCAN=true; }
 fi
 
-[[ -f ${OSSA_WORKDIR}/release-info.txt ]] && cat ${OSSA_WORKDIR}/release-info.txt
+[[ -f ${OSSA_WORKDIR}/release-info ]] && cat ${OSSA_WORKDIR}/release-info
 echo
-[[ -f ${OSSA_WORKDIR}/package-table.txt ]] && cat ${OSSA_WORKDIR}/package-table.txt
+[[ -f ${OSSA_WORKDIR}/package-table ]] && cat ${OSSA_WORKDIR}/package-table
 echo
 if [[ ${NO_CVE_SCAN} = false && ${TEST_OVAL:(-3)} -eq 200 && -f ${OSSA_WORKDIR}/$(basename ${OVAL_URI//.bz2}) ]];then
 	[[ ${VERBOSE} = true ]] && { printf "Initiating CVE scan for Ubuntu ${OSSA_CODENAME^}\n"; }
@@ -182,4 +190,4 @@ fi
 echo -en "\n${TITLE_FULL} for ${OSSA_HOST} completed in $(TZ=UTC date --date now-${ORIGIN_NOW} "+%H:%M:%S")"|tee -a ${OSSA_WORKDIR}/ossa-generator.log
 echo;echo
 
-[[ ${DEBUG} = true ]] && { set +x;export VERBOSE=false; }
+[[ ${DEBUG} = true ]] && { set +x;export VERBOSE=false DEBUG=false; }
