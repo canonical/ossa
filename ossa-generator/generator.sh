@@ -132,9 +132,7 @@ show-release-info
 ([[ -f ${OSSA_WORKDIR}/release-info.txt ]] && echo "export OSSA_RELEASE_TABLE=${OSSA_WORKDIR}/release-info.txt"|tee 1>/dev/null -a ${OSSA_RC})
 # re-source updated rc file
 source-file ${OSSA_RC} -q
-# show release info
-[[ -n ${OSSA_RELEASE_TABLE} && -f ${OSSA_RELEASE_TABLE} && ! ${@} =~ -col ]] && cat ${OSSA_RELEASE_TABLE}
-[[ -n ${OSSA_RELEASE_TABLE} && -f ${OSSA_RELEASE_TABLE} && ${@} =~ -col ]] && cat ${OSSA_RELEASE_TABLE_ANSI}
+
 
 # show package origin info
 make-origin-table
@@ -170,6 +168,10 @@ if [[ ${TEST_OVAL:(-3)} -eq 200 ]];then
 	[[ $? -eq 0 && -f ${OSSA_WORKDIR}/$(basename ${OVAL_URI//.bz2}) ]] || { OVAL_MSG="Errors occurred while downloaind OVAL data for Ubuntu ${OSSA_CODENAME}\n";export NO_CVE_SCAN=true; }
 fi
 
+[[ -f ${OSSA_WORKDIR}/release-info.txt ]] && cat ${OSSA_WORKDIR}/release-info.txt
+echo
+[[ -f ${OSSA_WORKDIR}/package-table.txt ]] && cat ${OSSA_WORKDIR}/package-table.txt
+echo
 if [[ ${NO_CVE_SCAN} = false && ${TEST_OVAL:(-3)} -eq 200 && -f ${OSSA_WORKDIR}/$(basename ${OVAL_URI//.bz2}) ]];then
 	[[ ${VERBOSE} = true ]] && { printf "Initiating CVE scan for Ubuntu ${OSSA_CODENAME^}\n"; }
 	oscap oval eval --report ${OSSA_WORKDIR}/oscap-cve-scan-report.${OSSA_HOST,,}.htm ${OSSA_WORKDIR}/$(basename ${OVAL_URI//.bz2})|awk -vF=0 -vT=0 '{if ($NF=="false") F++} {if ($NF=="true") T++} END {print "CVE Scan Results (Summary)\n  Common Vulnerabilities Addressed: "F"\n  Current Vulnerability Exposure: "T}'|tee ${OSSA_WORKDIR}/cve-stats.${OSSA_HOST,,}
