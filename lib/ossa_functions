@@ -73,7 +73,10 @@ dig-test(){
 	local CDNS=$($RSLV_CMD $PRIMARY_NIC|awk '/Current DNS Server:/{print $NF}')
 	local DIGTEST=$(dig a ${DHOST}|awk '/'${DHOST}'.*IN.*A/{print $NF}')
 	[[ $DIGTEST = A ]] && { printf "No A Record found for ${DHOST} on DNS Server: ${CDNS}\n"; }
-	[[ $DIGTEST =~ (([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]?) ]] && { printf "Name resolution (via dig) OK for ${DHOST}\n"; }
+	if [[ $DIGTEST =~ (([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]?) ]];then
+		local DIP=$(grep -oE '(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]?)' <<<  "$DIGTEST")
+		printf "Name resolution (via dig) OK for ${DHOST} ($DIP)\n";
+	fi
 }
 
 
