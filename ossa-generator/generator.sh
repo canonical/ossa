@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export OSSA_VER=1.0
-
+export VERBOSE=true
 [[ -z ${1} || ${1} =~ -h || ! -f ${1} ]] && { echo -en "Usage: ./${PROG} <path to ossa-lite archive>\nNote: sudo access is required\n" 1>&2;exit 2; }
 [[ -f ${1} ]] && export OSSA_ARCHIVE=${1}
 
@@ -28,7 +28,7 @@ TZ=UTC export NOW=$(date +%s)sec
 tput civis
 
 # source OSSA functions
-[[ -f ${SCRIPT_DIR}/../lib/ossa_functions && ${VERBOSE} = true ]] && { printf "\e[2G - Sourcing functions: ${SCRIPT_DIR}/../lib/ossa_functions\n"; }
+[[ -f ${SCRIPT_DIR}/../lib/ossa_functions && ${VERBOSE} = true ]] && { printf "\e[2G - Sourcing OSSA functions: ${SCRIPT_DIR}/../lib/ossa_functions\n"; }
 [[ -f ${SCRIPT_DIR}/../lib/ossa_functions ]] && source ${SCRIPT_DIR}/../lib/ossa_functions
 
 # set OSSA_HOST based on OSSA_ARCHIVE filename
@@ -44,15 +44,15 @@ export OSSA_WORKDIR="${OSSA_DIR}/${OSSA_HOST}"
 
 # set ossa user
 [[ -z ${OSSA_USER} ]] && export OSSA_USER=${OSSA_USER:-$(id -un 1000)}
-[[ ${VERBOSE} = true ]] && { printf "\e[2G - \${OSSA_USER} has been set to ${OSSA_USER}\n"; }
+[[ ${VERBOSE} = true ]] && { printf "\e[2G - Parameter \$OSSA_USER has been set to ${OSSA_USER}\n"; }
 
 # set ossa group 
 [[ -z ${OSSA_GROUP} ]] && export OSSA_GROUP=${OSSA_GROUP:-$(id -gn 1000)}
-[[ ${VERBOSE} = true ]] && { printf "\e[2G - \${OSSA_GROUP} has been set to ${OSSA_GROUP}\n"; }
+[[ ${VERBOSE} = true ]] && { printf "\e[2G - Parameter \$OSSA_GROUP has been set to ${OSSA_GROUP}\n"; }
 
 # set rc file
 export OSSA_RC=${OSSA_WORKDIR}/ossarc
-[[ ${VERBOSE} = true ]] && { printf "\e[2G - Setting \${OSSA_RC} (runtime configuration) to ${OSSA_RC}\n"; }
+[[ ${VERBOSE} = true ]] && { printf "\e[2G - Setting parameter \$OSSA_RC (runtime configuration) to ${OSSA_RC}\n"; }
 
 # Make working directroy and extract the archive
 [[ ${VERBOSE} = true ]] && { printf "\e[2G - Extracting OSSA data from ${OSSA_ARCHIVE}\n"; }
@@ -97,14 +97,14 @@ source-file ${OSSA_RC} -q
 # Create package origin list ( ~ apt-cache madison using files only)
 if [[ -f ${OSSA_WORKDIR}/manifest.${OSSA_HOST} ]];then
 	TZ=UTC export ORIGIN_NOW=$(date +%s)sec;
-	SPID=$((cat ${OSSA_WORKDIR}/manifest.${OSSA_HOST})|xargs -rn2 -P0 bash -c 'printf "${0}|${1}|$(grep "^Package: ${0//+/\+}$" /var/lib/apt/lists/*_Packages|head -n1|sed -r "s/^.*dists_|_binary.*$//g;s/_/\//g")\n"'|tee 1>/dev/null ${OSSA_WORKDIR}/apt-madison.out) &
+	SPID=$((cat ${OSSA_WORKDIR}/manifest.${OSSA_HOST})|xargs -rn2 -P0 bash -c 'printf "${0}|${1}|$(grep "^Package: ${0//+/\+}$" '${OSSA_WORKDIR}'/apt/var/lib/apt/lists/*_Packages|head -n1|sed -r "s/^.*dists_|_binary.*$//g;s/_/\//g")\n"'|tee 1>/dev/null ${OSSA_WORKDIR}/apt-madison.out) &
 	SPID=$!
 	declare -ag CHARS=($(printf "\u22EE\u2003\b") $(printf "\u22F0\u2003\b") $(printf "\u22EF\u2003\b") $(printf "\u22F1\u2003\b"))
 	if [[ ${DEBUG} = true ]];then
 		[[ ${VERBOSE} = true ]] && { printf "\e[2G - Parsing package origin information. Please wait\n"; }
 	else
 		while kill -0 $SPID 2>/dev/null;do
-			for c in ${CHARS[@]};do printf 1>&2 "\r\e[2G - ${TITLE_FULL}: Parsing package origin information. Please wait %s  (Elapsed Time: $(TZ=UTC date --date now-${NOW} "+%M:%S"))\e[K\e[0m" $c;sleep .03;done
+			for c in ${CHARS[@]};do printf 1>&2 "\r\e[2G - ${TITLE_FULL}: Parsing package origin information. Please wait %s  (Elapsed Time: $(TZ=UTC date --date now-${ORIGIN_NOW} "+%M:%S"))\e[K\e[0m" $c;sleep .03;done
 		done
 	fi
 	wait $SPID
@@ -121,7 +121,7 @@ if [[ -f ${OSSA_WORKDIR}/manifest.${OSSA_HOST} ]];then
 
 	# Remove lines without origin info from OSSA_MADISON
 	[[ ${VERBOSE} = true ]] && { printf "\e[2G - Stripping unknown origins from ${OSSA_WORKDIR}/apt-madison.out\n"; }
-	sed -i '/\|$/d' ${OSSA_WORKDIR}/apt-madison.out
+	sed -i '/|$/d' ${OSSA_WORKDIR}/apt-madison.out
 # re-source updated rc file
 	source-file ${OSSA_RC} -q
 fi
@@ -151,8 +151,40 @@ source-file ${OSSA_RC} -q
 
 
 # Create package origin table
-[[ ${VERBOSE} = true ]] && { printf "\e[2G - Running function \"make-origin-table\"\n"; }
-make-origin-table
+if [[ -f ${OSSA_WORKDIR}/apt-madison.out ]];then
+	[[ ${VERBOSE} = true ]] && { printf "\e[2G - Making package origin tables...\n"; }
+	declare -ag COMPONENTS=(main universe multiverse restricted)
+	declare -ag POCKETS=(${OSSA_CODENAME} ${OSSA_CODENAME}-updates ${OSSA_CODENAME}-security ${OSSA_CODENAME}-backports ${OSSA_CODENAME}-proposed)
+	for x in ${COMPONENTS[@]};do
+		declare -ag ${x^^}=\(\);eval ${x^^}+=\( $(grep "/${x}" ${OSSA_MADISON}|wc -l) \)
+		for y in ${POCKETS[@]};do
+			eval ${x^^}+=\( ${y}:$(grep "${y}/${x}" ${OSSA_MADISON}|wc -l) \)
+		done
+	done
+	export COMPONENT_TOTAL=$((${MAIN[0]##*:}+${UNIVERSE[0]##*:}+${MULTIVERSE[0]##*:}+${RESTRICTED[0]##*:}))
+	export RELEASE_TOTAL=$((${MAIN[1]##*:}+${UNIVERSE[1]##*:}+${MULTIVERSE[1]##*:}+${RESTRICTED[1]##*:}))
+	export UPDATES_TOTAL=$((${MAIN[2]##*:}+${UNIVERSE[2]##*:}+${MULTIVERSE[2]##*:}+${RESTRICTED[2]##*:}))
+	export SECURITY_TOTAL=$((${MAIN[3]##*:}+${UNIVERSE[3]##*:}+${MULTIVERSE[3]##*:}+${RESTRICTED[3]##*:}))
+	export BACKPORTS_TOTAL=$((${MAIN[4]##*:}+${UNIVERSE[4]##*:}+${MULTIVERSE[4]##*:}+${RESTRICTED[4]##*:}))
+	export PROPOSED_TOTAL=$((${MAIN[5]##*:}+${UNIVERSE[5]##*:}+${MULTIVERSE[5]##*:}+${RESTRICTED[5]##*:}))	
+	((for ((i=0; i<${#POCKETS[@]}; i++)); do printf '%s\n' ${POCKETS[i]};done|paste -sd"|"|sed 's/^/Ubuntu '${OSSA_CODENAME^}'|'${OSSA_HOST}'|/g'
+	printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[0]} ${MAIN[0]##*:} ${MAIN[1]##*:} ${MAIN[2]##*:} ${MAIN[3]##*:} ${MAIN[4]##*:} ${MAIN[5]##*:}
+	printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[1]} ${UNIVERSE[0]##*:} ${UNIVERSE[1]##*:} ${UNIVERSE[2]##*:} ${UNIVERSE[3]##*:} ${UNIVERSE[4]##*:} ${UNIVERSE[5]##*:}
+	printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[2]} ${MULTIVERSE[0]##*:} ${MULTIVERSE[1]##*:} ${MULTIVERSE[2]##*:} ${MULTIVERSE[3]##*:} ${MULTIVERSE[4]##*:} ${MULTIVERSE[5]##*:}
+	printf '%s|%s|%s|%s|%s|%s|%s\n' ${COMPONENTS[3]} ${RESTRICTED[0]##*:} ${RESTRICTED[1]##*:} ${RESTRICTED[2]##*:} ${RESTRICTED[3]##*:} ${RESTRICTED[4]##*:} ${RESTRICTED[5]##*:}
+	printf '%s|%s|%s|%s|%s|%s|%s\n' Totals ${COMPONENT_TOTAL} ${RELEASE_TOTAL} ${UPDATES_TOTAL} ${SECURITY_TOTAL} ${BACKPORTS_TOTAL} ${PROPOSED_TOTAL}
+	)|column -nexts"|"|tee ${OSSA_WORKDIR}/package_table.txt| \
+	sed -re '1s/Ubuntu '${OSSA_CODENAME^}'/'$(printf "\e[1;48;2;233;84;32m\e[1;38;2;255;255;255m")'&'$(printf "\e[0m")'/' \
+		-re '1s/'${OSSA_CODENAME}'/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/' \
+		-re '1s/'${OSSA_HOST}'/'$(printf "\e[1;48;2;255;255;255m\e[1;38;2;233;84;32m")'&'$(printf "\e[0m")'/' \
+		-re '1s/'${OSSA_CODENAME}'-updates/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/' \
+		-re '1s/'${OSSA_CODENAME}'-security/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/' \
+		-re '1s/'${OSSA_CODENAME}'-backports/'$(printf "\e[38;2;255;200;0m")'&'$(printf "\e[0m")'/g' \
+		-re '1s/'${OSSA_CODENAME}'-proposed/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g' \
+		-re 's/main|universe/'$(printf "\e[38;2;0;255;0m")'&'$(printf "\e[0m")'/g' \
+		-re 's/multiverse.*$|restricted.*$/'$(printf "\e[38;2;255;0;0m")'&'$(printf "\e[0m")'/g')|tee ${OSSA_WORKDIR}/package-table-ansi|sed 's/\x1b\[[0-9;]*[a-zA-Z]//g'|tee 1>/dev/null ${OSSA_WORKDIR}/package-table
+fi
+
 # add package table info tables to rc file
 [[ -f ${OSSA_WORKDIR}/package-table-ansi && ${VERBOSE} = true ]] && { printf "\e[2G - Updating \${OSSA_RC} with location of package-table (ansi version)\n"; }
 ([[ -f ${OSSA_WORKDIR}/package-table-ansi ]] && echo "export OSSA_PACKAGE_TABLE_ANSI=${OSSA_WORKDIR}/package-table-ansi"|tee 1>/dev/null -a ${OSSA_RC})
@@ -164,8 +196,26 @@ source-file ${OSSA_RC} -q
 
 
 # get package names for popularity contest
-[[ -f ${OSSA_WORKDIR}/popularity-contest.${OSSA_HOST} && ${VERBOSE} = true ]] && { printf "\e[2G - Parsing \"popularity-contest\" data\n"; }
-[[ -f ${OSSA_WORKDIR}/popularity-contest.${OSSA_HOST} ]] && { (awk 'BEGIN { cmd="dpkg -S" $4"|sed 's/:.*$//g'"};{if ($0 ~ /"POPULAR"/) next};{OFS=",";if ( $1 ~ /^[0-9]+$/ && $1 != 0) {cmd="dpkg -S "$4"|sed 's/:.*$//g'";cmd|getline P;print strftime("%Y-%m-%d-%H:%M:%S", $1),strftime("%Y-%m-%d-%H:%M:%S", $2),$3,$4,P;next} else print $1,$2,$3,$4;next}' ${OSSA_WORKDIR}/popularity-contest.${OSSA_HOST})|tee 1>/dev/null ${OSSA_WORKDIR}/popularity-contest.processed; }
+if [[ -f ${OSSA_WORKDIR}/popularity-contest.${OSSA_HOST} ]];then
+	[[ ${VERBOSE} = true ]] && { printf "\e[2G - Parsing \"popularity-contest\" data\n"; }
+	TZ=UTC export POPC_NOW=$(date +%s)sec;
+	SPID=$((awk 'BEGIN { cmd="dpkg -S" $4"|sed 's/:.*$//g'"};{if ($0 ~ /"POPULAR"/) next};{OFS=",";if ( $1 ~ /^[0-9]+$/ && $1 != 0) {cmd="dpkg -S "$4"|sed 's/:.*$//g'";cmd|getline P;print strftime("%Y-%m-%d-%H:%M:%S", $1),strftime("%Y-%m-%d-%H:%M:%S", $2),$3,$4,P;next} else print $1,$2,$3,$4;next}' ${OSSA_WORKDIR}/popularity-contest.${OSSA_HOST})|tee 1>/dev/null ${OSSA_WORKDIR}/popularity-contest.processed) &
+	SPID=$!
+	declare -ag CHARS=($(printf "\u22EE\u2003\b") $(printf "\u22F0\u2003\b") $(printf "\u22EF\u2003\b") $(printf "\u22F1\u2003\b"))
+	if [[ ${DEBUG} = true ]];then
+		[[ ${VERBOSE} = true ]] && { printf "\e[2G - Parsing popularity-contest data. Please wait\n"; }
+	else
+		while kill -0 $SPID 2>/dev/null;do
+			for c in ${CHARS[@]};do printf 1>&2 "\r\e[2G - ${TITLE_FULL}: Parsing popularity-contest data. Please wait %s  (Elapsed Time: $(TZ=UTC date --date now-${POPC_NOW} "+%M:%S"))\e[K\e[0m" $c;sleep .03;done
+		done
+	fi
+	wait $SPID
+	[[ ${VERBOSE} = true ]] && { echo -en "\r\e[K\r\e[2G - Parsing popularity-contest data took $(TZ=UTC date --date now-${POPC_NOW} "+%H:%M:%S").\n"; }
+	([[ -f ${OSSA_WORKDIR}/popularity-contest.processed ]] && echo "export OSSA_POPCONTEST=\"${OSSA_WORKDIR}/popularity-contest.processed\""|tee 1>/dev/null -a ${OSSA_RC})
+	# re-source updated rc file
+	[[ -f ${OSSA_WORKDIR}/popularity-contest.processed ]] && source-file ${OSSA_RC} -q
+fi
+
 
 # Install OpenSCAP if not installed
 [[ $(is-installed openscap-daemon) = true ]] || { printf "Installing OpenSCAP.  You may be prompted for your password\n";${SCMD} apt install -yq openscap-daemon &>/tmp/install.openscap-daemon.log; }
@@ -185,7 +235,6 @@ elif [[ ${TEST_OVAL:(-3)} -eq 000 ]];then
 	OVAL_MSG="Network issues prevented download of OVAL data for Ubuntu ${OSSA_CODENAME}\n"
 	export NO_CVE_SCAN=true
 fi
-echo;echo
 # If OVAL data reachable, download it
 if [[ ${TEST_OVAL:(-3)} -eq 200 ]];then
 	[[ ${VERBOSE} = true ]] && { printf "\e[2G - Initiating download of OVAL data for Ubuntu ${OSSA_CODENAME^}\n"; }
