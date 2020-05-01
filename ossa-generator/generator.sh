@@ -195,16 +195,16 @@ if [[ ${TEST_OVAL:(-3)} -eq 200 ]];then
 fi
 
 [[ -f ${OSSA_WORKDIR}/release-info && ${VERBOSE} = true ]] && { printf "\e[2G - Displaying \"release-info\"\n\n"; }
-[[ -f ${OSSA_WORKDIR}/release-info ]] && { cat ${OSSA_WORKDIR}/release-info|sed 's/^.*$/      /g'; }
+[[ -f ${OSSA_WORKDIR}/release-info ]] && { cat ${OSSA_WORKDIR}/release-info|sed 's/^.*$/      &/g'; }
 echo;echo
 
 [[ -f ${OSSA_WORKDIR}/package-table && ${VERBOSE} = true ]] && { printf "\e[2G - Displaying \"package-table\"\n\n"; }
-[[ -f ${OSSA_WORKDIR}/package-table ]] && { cat ${OSSA_WORKDIR}/package-table|sed 's/^.*$/      /g'; }
+[[ -f ${OSSA_WORKDIR}/package-table ]] && { cat ${OSSA_WORKDIR}/package-table|sed 's/^.*$/      &/g'; }
 echo;echo
 
 if [[ ${NO_CVE_SCAN} = false && ${TEST_OVAL:(-3)} -eq 200 && -f ${OSSA_WORKDIR}/$(basename ${OVAL_URI//.bz2}) ]];then
 	[[ ${VERBOSE} = true ]] && { printf "\e[2G - Initiating CVE scan for Ubuntu ${OSSA_CODENAME^}\n\n"; }
-	oscap oval eval --report ${OSSA_WORKDIR}/oscap-cve-scan-report.${OSSA_HOST,,}.htm ${OSSA_WORKDIR}/$(basename ${OVAL_URI//.bz2})|awk -vF=0 -vT=0 '{if ($NF=="false") F++} {if ($NF=="true") T++} END {print "CVE Scan Results (Summary)\n  Common Vulnerabilities Addressed: "F"\n  Current Vulnerability Exposure: "T}'|tee ${OSSA_WORKDIR}/cve-stats.${OSSA_HOST,,}|sed 's/^.*$/      /g'
+	oscap oval eval --report ${OSSA_WORKDIR}/oscap-cve-scan-report.${OSSA_HOST,,}.htm ${OSSA_WORKDIR}/$(basename ${OVAL_URI//.bz2})|awk -vF=0 -vT=0 '{if ($NF=="false") F++} {if ($NF=="true") T++} END {print "CVE Scan Results (Summary)\n  Common Vulnerabilities Addressed: "F"\n  Current Vulnerability Exposure: "T}'|tee ${OSSA_WORKDIR}/cve-stats.${OSSA_HOST,,}|sed 's/^.*$/      &/g'
 else
 	printf "\e[2G - ERROR: Cannot perform CVE Scan\nREASON: ${OVAL_MSG}\n\n"	
 fi
