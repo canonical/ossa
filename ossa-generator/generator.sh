@@ -51,7 +51,7 @@ export OSSA_RC=${OSSA_WORKDIR}/ossarc
 [[ ${VERBOSE} = true ]] && { printf "Extracting OSSA data from ${OSSA_ARCHIVE}\n"; }
 ${SCMD} mkdir -p ${OSSA_WORKDIR}
 [[ -f ${OSSA_ARCHIVE} ]] && ${SCMD} tar -C ${OSSA_WORKDIR} -xzf ${OSSA_ARCHIVE}
-[[ -n $(find ${OSSA_WORKDIR} -maxdepth 1 -type f -iname "apt-files.*\.tar") ]] && { mkdir -p ${OSSA_WORKDIR}/apt && tar -C ${OSSA_WORKDIR}/apt -xf $(find ${OSSA_WORKDIR} -maxdepth 1 -type f -iname "apt-files.*\.tar"); }
+[[ -n $(find ${OSSA_WORKDIR} -maxdepth 1 -type f -iname "apt-files.*\.tar") ]] && { ${SCMD} mkdir -p ${OSSA_WORKDIR}/apt && ${SCMD} tar -C ${OSSA_WORKDIR}/apt -xf $(find ${OSSA_WORKDIR} -maxdepth 1 -type f -iname "apt-files.*\.tar"); }
 
 # set workdir permisssions
 if [[ -n ${OSSA_WORKDIR} && -d ${OSSA_WORKDIR} ]];then
