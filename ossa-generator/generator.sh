@@ -108,7 +108,7 @@ if [[ -f ${OSSA_WORKDIR}/manifest.${OSSA_HOST} ]];then
 		done
 	fi
 	wait $SPID
-	[[ ${VERBOSE} = true ]] && { echo -en "\r\e[K\rParsing package origin information took $(TZ=UTC date --date now-${ORIGIN_NOW} "+%H:%M:%S").\n"; }
+	[[ ${VERBOSE} = true ]] && { echo -en "\r\e[K\r\e[2G - Parsing package origin information took $(TZ=UTC date --date now-${ORIGIN_NOW} "+%H:%M:%S").\n"; }
 
 	# add package origin file info to rc file
 	[[ ${VERBOSE} = true ]] && { printf "\e[2G - Adding OSSA_MADISON env variable to ${OSSA_RC}\n"; }
@@ -194,19 +194,19 @@ if [[ ${TEST_OVAL:(-3)} -eq 200 ]];then
 	[[ $? -eq 0 && -f ${OSSA_WORKDIR}/$(basename ${OVAL_URI//.bz2}) ]] || { OVAL_MSG="Error(s) occurred (${TEST_OVAL_RC}) while downloading OVAL data for Ubuntu ${OSSA_CODENAME}\n";export NO_CVE_SCAN=true; }
 fi
 
-[[ -f ${OSSA_WORKDIR}/release-info && ${VERBOSE} = true ]] && { printf "\e[2G - Displaying \"release-info\"\n"; }
-[[ -f ${OSSA_WORKDIR}/release-info ]] && cat ${OSSA_WORKDIR}/release-info
+[[ -f ${OSSA_WORKDIR}/release-info && ${VERBOSE} = true ]] && { printf "\e[2G - Displaying \"release-info\"\n\n"; }
+[[ -f ${OSSA_WORKDIR}/release-info ]] && { cat ${OSSA_WORKDIR}/release-info|sed 's/^.*$/      /g'; }
 echo;echo
 
-[[ -f ${OSSA_WORKDIR}/package-table && ${VERBOSE} = true ]] && { printf "\e[2G - Displaying \"package-table\"\n"; }
-[[ -f ${OSSA_WORKDIR}/package-table ]] && cat ${OSSA_WORKDIR}/package-table
+[[ -f ${OSSA_WORKDIR}/package-table && ${VERBOSE} = true ]] && { printf "\e[2G - Displaying \"package-table\"\n\n"; }
+[[ -f ${OSSA_WORKDIR}/package-table ]] && { cat ${OSSA_WORKDIR}/package-table|sed 's/^.*$/      /g'; }
 echo;echo
 
 if [[ ${NO_CVE_SCAN} = false && ${TEST_OVAL:(-3)} -eq 200 && -f ${OSSA_WORKDIR}/$(basename ${OVAL_URI//.bz2}) ]];then
-	[[ ${VERBOSE} = true ]] && { printf "\e[2G - Initiating CVE scan for Ubuntu ${OSSA_CODENAME^}\n"; }
-	oscap oval eval --report ${OSSA_WORKDIR}/oscap-cve-scan-report.${OSSA_HOST,,}.htm ${OSSA_WORKDIR}/$(basename ${OVAL_URI//.bz2})|awk -vF=0 -vT=0 '{if ($NF=="false") F++} {if ($NF=="true") T++} END {print "CVE Scan Results (Summary)\n  Common Vulnerabilities Addressed: "F"\n  Current Vulnerability Exposure: "T}'|tee ${OSSA_WORKDIR}/cve-stats.${OSSA_HOST,,}
+	[[ ${VERBOSE} = true ]] && { printf "\e[2G - Initiating CVE scan for Ubuntu ${OSSA_CODENAME^}\n\n"; }
+	oscap oval eval --report ${OSSA_WORKDIR}/oscap-cve-scan-report.${OSSA_HOST,,}.htm ${OSSA_WORKDIR}/$(basename ${OVAL_URI//.bz2})|awk -vF=0 -vT=0 '{if ($NF=="false") F++} {if ($NF=="true") T++} END {print "CVE Scan Results (Summary)\n  Common Vulnerabilities Addressed: "F"\n  Current Vulnerability Exposure: "T}'|tee ${OSSA_WORKDIR}/cve-stats.${OSSA_HOST,,}|sed 's/^.*$/      /g'
 else
-	printf "ERROR: Cannot perform CVE Scan\nREASON: ${OVAL_MSG}\n\n"	
+	printf "\e[2G - ERROR: Cannot perform CVE Scan\nREASON: ${OVAL_MSG}\n\n"	
 fi
 
 echo -en "\n${TITLE_FULL} for ${OSSA_HOST} completed in $(TZ=UTC date --date now-${ORIGIN_NOW} "+%H:%M:%S")"|tee -a ${OSSA_WORKDIR}/ossa-generator.log
