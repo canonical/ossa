@@ -26,7 +26,7 @@ There is only one option/argument required for collector.sh
 	./Usage: ./collector.sh user@host
 	```
 
-## Data is automatically collected data locally
+## Data is automatically collected from local and/or remote systems and stored on the system where the collector is being ran.
 
 Change your working directory to ossa-generator/collector where this file
 is located. Once in ossa-collector/collector you can:
@@ -59,16 +59,19 @@ Once collector.sh has completed, the script will print a pointer to the local co
 
 |Files Collected|Purpose|
 |:------------- |:------------- |
-|/etc/apt/sources.list|To ensure proper package origin is used for assessment|
-|/etc/hostname|To identify hostname of assessed system(s)|
-|/etc/hosts|To identify hostname of assessed system(s)|
-|/etc/lsb-release|To indentify the release of Ubuntu being assessed|
+|/etc/apt/sources.list|To ensure proper package origin is used for the assessed system(s)|
+|/etc/hostname|To identify hostname of the assessed system(s)|
+|/etc/hosts|To identify hostname of the assessed system(s)|
+|/etc/lsb-release|To indentify the release of Ubuntu being used on the assessed system(s)|
 |/var/lib/apt/lists/*Release|To ensure proper package names/versions are used for assessment|
 |/var/lib/apt/lists/*Packages|To ensure proper package names/versions are used for assessment|
-|/var/lib/dpkg/status|To ensure proper package names/versions are used for assessment|
-|```dpkg -l``` output|To ensure proper package names/versions are used for assessment|
-|```apt-cache``` policy output|To ensure proper package origin is used for assessment|
-|```snap list``` output|To show which snaps are being used on assessed system(s)|
-|```ps -auxwww``` output|To help identify which packages are actually being used|
-|```ps -eao pid,ppid,user,stat,etimes,cmd --sort=cmd``` output|To help identify which packages are actually being used|
-|```netstat -an``` output|To help identify which packages are actually being used|
+|/var/lib/dpkg/status|To help identify which packages are actually being used on the assessed system(s)|
+|```dpkg -l``` output|To help identify which packages are actually being used on the assessed system(s)|
+|```apt-cache``` policy output|To ensure proper package origin is used for the assessed system(s)|
+|```popularity-contest``` output|To get a list of most recently/frequently used packages on the assessed system(s)|
+|```snap list``` output|To help identify which snaps are being used on the assessed system(s)|
+|```pip3 list``` output|To help identify which python3 packages are being used on the assessed system(s)|
+|```pip list``` output|To help identify which python2 packages are being used on the assessed system(s)|
+|```ps -auxwww``` output|To help identify which binaries (from packages, snaps, etc) are actually being used (vs just installed) on the assessed system(s)|
+|```ps -eao pid,ppid,user,stat,etimes,cmd --sort=cmd``` output|To help identify which binaries (from packages, snaps, etc) are actually being used (vs just installed) on the assessed system(s)|
+|```netstat -an``` output|To help identify which binaries (from packages, snaps, etc) are actually being used (vs just installed) on the assessed system(s)|
