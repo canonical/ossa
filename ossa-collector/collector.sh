@@ -26,6 +26,8 @@ dpkg 2>/dev/null -l > /tmp/dpkg-l.${SFX};[[ $? -eq 0 && -f /tmp/dpkg-l.${SFX} ]]
 apt-cache 2>/dev/null policy > /tmp/apt-policy.${SFX};[[ $? -eq 0 && -f /tmp/apt-policy.${SFX} ]] && FILES+=( "apt-policy.${SFX}" );
 [[ $(command -v snap) ]] && { snap 2>/dev/null list > /tmp/snap-list.${SFX};[[ $? -eq 0 && -f /tmp/snap-list.${SFX} ]] && FILES+=( "snap-list.${SFX}" ); }
 [[ $(command -v popularity-contest) ]] && { popularity-contest 2>/dev/null > /tmp/popularity-contest.${SFX};[[ $? -eq 0 && -f /tmp/popularity-contest.${SFX} ]] && FILES+=( "popularity-contest.${SFX}" ); }
+[[ $(pip3 -V --disable-pip-version-check 2>/dev/null) ]] && { pip3 list --disable-pip-version-check 2>/dev/null > /tmp/python3-packages.${SFX};[[ $? -eq 0 && -f /tmp/python3-packages.${SFX} ]] && FILES+=( "python3-packages.${SFX}" ); }
+[[ $(pip -V --disable-pip-version-check 2>/dev/null) ]] && { pip list --disable-pip-version-check 2>/dev/null > /tmp/python2-packages.${SFX};[[ $? -eq 0 && -f /tmp/python2-packages.${SFX} ]] && FILES+=( "python2-packages.${SFX}" ); }
 ps 2>/dev/null -auxwww > /tmp/ps-auxwww.${SFX};[[ $? -eq 0 && -f /tmp/ps-auxwww.${SFX} ]] && FILES+=( "ps-auxwww.${SFX}" );
 ps 2>/dev/null -eao pid,ppid,user,stat,etimes,cmd --sort=cmd > /tmp/ps-eao.${SFX};[[ $? -eq 0 && -f /tmp/ps-eao.${SFX} ]] && FILES+=( "ps-eao.${SFX}" );
 [[ -f /etc/lsb-release ]] && { cp /etc/lsb-release /tmp/lsb-release.${SFX};[[ $? -eq 0 && -f /tmp/lsb-release.${SFX} ]] && FILES+=( "lsb-release.${SFX}" ); }
