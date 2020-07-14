@@ -6,13 +6,13 @@ A set of non-invasive, lightweight scripts to gather information about [open sou
 ## Downloading the Scripts
 
 ```
-git clone https://github.com/ThinGuy/ossa.git
+git clone https://github.com/canonical/ossa.git
 ```
 
 ## Available Scripts
 
-* [ossa-collector](https://github.com/ThinGuy/ossa/tree/master/ossa-collector) - Gathers information about a remote machine's packages and processes, etc. 
-* [ossa-generator](https://github.com/ThinGuy/ossa/tree/master/ossa-generator) - This script processes the information obtained via collector.
+* [ossa-collector](https://github.com/canonical/ossa/tree/master/ossa-collector) - Gathers information about a remote machine's packages and processes, etc. 
+* [ossa-generator](https://github.com/canonical/ossa/tree/master/ossa-generator) - This script processes the information obtained via collector.
 
 ## Prerequisites
 
