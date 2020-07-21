@@ -1,1 +1,1 @@
-ossa/blob/master/ossa-collector/collector.sh
+ossa-collector/collector.sh
