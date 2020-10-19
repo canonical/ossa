@@ -7,7 +7,7 @@ This script generates useful data from the files gathered by ossa-collector.
 
 ## Script Duration
 
-OSSA Generator should complete is less than 120 seconds per machine
+OSSA Generator should complete in less than 120 seconds per machine
 
 ## Script Options
 
