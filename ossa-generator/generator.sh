@@ -2,7 +2,7 @@
 
 export OSSA_VER=1.0
 export VERBOSE=true
-[[ -z ${1} || ${1} =~ -h || ! -f ${1} ]] && { echo -en "Usage: ./${PROG} <path to ossa-lite archive>\nNote: sudo access is required\n" 1>&2;exit 2; }
+[[ -z ${1} || ${1} =~ -h || ! -f ${1} ]] && { echo -en "Usage: ./${PROG} <path to ossa archive>\nNote: sudo access is required\n" 1>&2;exit 2; }
 [[ -f ${1} ]] && export OSSA_ARCHIVE=${1}
 
 #Root/sudo check
