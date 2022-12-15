@@ -34,6 +34,6 @@ ps 2>/dev/null -eao pid,ppid,user,stat,etimes,cmd --sort=cmd > /tmp/ps-eao.${SFX
 [[ ! -f /etc/lsb-release && $(command -v lsb_release) ]] && { for i in ID RELEASE CODENAME DESCRIPTION;do echo "DISTRIB_${i}=\"$(lsb_release -s$(echo ${i,,}|cut -c1))\""; done|tee 1>/dev/null /tmp/lsb-release.${SFX};[[ $? -eq 0 && -f /tmp/lsb-release.${SFX} ]] && FILES+=( "lsb-release.${SFX}" ); }
 export FLIST=$(printf "%s\n" ${FILES[@]}|paste -sd " ")
 tar -C /tmp -cf - ${FLIST}'|gzip -c|tee 1>/dev/null /tmp/ossa-${PROG//.sh}-data.${SSH_HOST##*@}.tgz;
-echo -e "\nOSSA ${TITLE} for ${SSH_HOST##*@} completed in $(TZ=UTC date --date now-${NOW} "+%H:%M:%S").\n";
+echo -e "\nOSSA ${TITLE} for ${SSH_HOST##*@} completed in $(($(TZ=UTC date +%s)-${NOW//sec})).\n";
 echo -e "Data collected by the OSSA ${TITLE} is located at \n/tmp/ossa-${PROG//.sh}-data.${SSH_HOST##*@}.tgz.\n";
 [[ ${DEBUG} = true ]] && set +x
