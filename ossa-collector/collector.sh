@@ -6,7 +6,7 @@ export SSH_OPTS="-q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no 
 trap 'tput cnorm;trap - INT TERM EXIT KILL QUIT;exit 0' INT TERM EXIT KILL QUIT;
 tput civis
 PROG=${0##*/}
-declare -c TITLE="${PROG//.sh}"
+export TITLE="${PROG//.sh}"
 echo -e "\nRunning OSSA ${TITLE} against ${SSH_HOST##*@}. Please wait..."
 # Start Timer
 TZ=UTC export NOW=$(date +%s)sec
