@@ -99,7 +99,7 @@ svars() {
 
 get-release-info() {
 declare -ag UBU_URLS=( http://releases.ubuntu.com http://old-releases.ubuntu.com/releases );     
-declare -ag UBU_RELEASES_CSV=($(printf '%s\n' ${UBU_URLS[@]}|(xargs -rn1 -P0 -I{} curl -sSlL {}|awk -vRS=">|<" '/^Ubuntu.[0-9]+.*/{gsub(/\(|\).*$|LTS |Beta /,"");gsub(/\.[0-9]$/,"",$2);split($2,a,/\./);print tolower($2),tolower($3),tolower($4)}')|sort -uV|sed 's/ /,/g'))
+declare -ag UBU_RELEASES_CSV=($(printf '%s\n' ${UBU_URLS[@]}|(xargs -P0 -I{} -rn1 curl -sSlL {}|awk -vRS=">|<" '/^Ubuntu.[0-9]+.*/{gsub(/\(|\).*$|LTS |Beta /,"");gsub(/\.[0-9]$/,"",$2);split($2,a,/\./);print tolower($2),tolower($3),tolower($4)}')|sort -uV|sed 's/ /,/g'))
 printf '%s\n' ${UBU_RELEASES_CSV[@]}|tee 1>/dev/null ${OSSA_WORKDIR}/ubuntu-releases.csv
 };export -f get-release-info
 
